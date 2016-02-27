@@ -1,0 +1,37 @@
+<resources>
+    <string name="app_name">DroneKit Bridge</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <string name="action_settings">Settings</string>
+
+    <string name="nav_mode">Mode</string>
+    <string name="nav_server">Server</string>
+    <string name="nav_client">Client</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+    <string name="lbl_ip_addr">IP Address:</string>
+    <string name="lbl_port">Port:</string>
+    <string name="btn_listen">Listen</string>
+    <string name="btn_stop_listening">Stop</string>
+    <string name="btn_connect">Connect</string>
+    <string name="btn_disconnect">Disconnect</string>
+    <string name="btn_send">Send</string>
+
+    <!-- ServerFragment -->
+    <string name="title_fragment_server">Server</string>
+    <string name="summary_fragment_server">Use this to receive messages from a <b>client</b> device running this application on the same network.</string>
+    <string name="toast_server_stopped">Server Stopped</string>
+    <string name="toast_client_connected">Client connected</string>
+    <string name="toast_client_disconnected">Client disconnected</string>
+    <string name="chk_log">Log incoming data</string>
+
+    <!-- ClientFragment -->
+    <string name="title_fragment_client">Client</string>
+    <string name="summary_fragment_client">Use this to send messages to a <b>server</b> device running this application on the same network.</string>
+    <string name="toast_client_connect_failed">Connection to server failed.</string>
+
+</resources>

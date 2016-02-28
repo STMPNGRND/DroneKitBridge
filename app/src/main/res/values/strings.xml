@@ -28,10 +28,14 @@
     <string name="toast_client_connected">Client connected</string>
     <string name="toast_client_disconnected">Client disconnected</string>
     <string name="chk_log">Log incoming data</string>
+    <string name="chk_relay_locations">Relay EVT_TARGET_LOCATION</string>
 
     <!-- ClientFragment -->
     <string name="title_fragment_client">Client</string>
     <string name="summary_fragment_client">Use this to send messages to a <b>server</b> device running this application on the same network.</string>
     <string name="toast_client_connect_failed">Connection to server failed.</string>
 
+    <string name="lbl_location_options">Locations:</string>
+    <string name="rdo_drone_location">DRONE_LOCATION_UPDATED events</string>
+    <string name="rdo_target_location">TARGET_LOCATION_UPDATED events</string>
 </resources>

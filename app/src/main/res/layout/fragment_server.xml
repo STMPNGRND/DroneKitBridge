@@ -73,6 +73,21 @@
                 style="@style/Text.Data"
                 />
         </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            >
+            <CheckBox
+                android:id="@+id/chk_relay_locations"
+                android:layout_width="0dip"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/chk_relay_locations"
+                />
+        </LinearLayout>
+
     </LinearLayout>
 
     <LinearLayout
@@ -116,5 +131,4 @@
                 />
         </ScrollView>
     </LinearLayout>
-
 </RelativeLayout>

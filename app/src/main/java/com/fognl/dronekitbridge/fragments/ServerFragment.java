@@ -2,6 +2,7 @@ package com.fognl.dronekitbridge.fragments;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -22,18 +23,15 @@ import android.widget.Toast;
 import com.fognl.dronekitbridge.DKBridgeApp;
 import com.fognl.dronekitbridge.R;
 import com.fognl.dronekitbridge.comm.SocketServer;
+import com.fognl.dronekitbridge.locationrelay.LocationRelay;
 
-/**
- * A simple {@link Fragment} subclass.
- * Activities that contain this fragment must implement the
- * {@link ServerFragment.OnFragmentInteractionListener} interface
- * to handle interaction events.
- * create an instance of this fragment.
- */
 public class ServerFragment extends Fragment {
     static final String TAG = ServerFragment.class.getSimpleName();
 
-    private OnFragmentInteractionListener mListener;
+    public interface OnFragmentInteractionListener {
+        // TODO: Update argument type and name
+        void onFragmentInteraction(Uri uri);
+    }
 
     private final View.OnClickListener mClickListener = new View.OnClickListener() {
         @Override
@@ -85,6 +83,14 @@ public class ServerFragment extends Fragment {
             if(mLogIncomingData) {
                 mLogText.append(data + "\n");
             }
+
+            if(mRelayLocations) {
+                Intent intent = LocationRelay.parseIntoTargetLocationEvent(data);
+                if(intent != null) {
+                    Log.v(TAG, "Send " + intent.getAction() + " event");
+                    getActivity().sendBroadcast(intent);
+                }
+            }
         }
 
         @Override
@@ -99,6 +105,8 @@ public class ServerFragment extends Fragment {
         }
     };
 
+    private OnFragmentInteractionListener mListener;
+
     private TextView mIpAddrText;
     private TextView mLogText;
     private EditText mPortEditText;
@@ -107,6 +115,7 @@ public class ServerFragment extends Fragment {
     private SocketServer mServer;
     private Thread mServerThread;
     private boolean mLogIncomingData;
+    private boolean mRelayLocations;
 
     public ServerFragment() {
         super();
@@ -148,47 +157,18 @@ public class ServerFragment extends Fragment {
             }
         });
 
+        ((CheckBox)view.findViewById(R.id.chk_relay_locations)).setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                mRelayLocations = isChecked;
+            }
+        });
+
         try {
-            String ip = SocketServer.getLocalIpAddress();
-            mIpAddrText.setText(ip);
+            mIpAddrText.setText(SocketServer.getLocalIpAddress());
         } catch(Throwable ex) {
             Log.e(TAG, ex.getMessage(), ex);
         }
-    }
-
-    @Override
-    public void onStart() {
-        super.onStart();
-        // When switching to this fragment
-        Log.v(TAG, "onStart()");
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-        // When switching to another app
-        Log.v(TAG, "onStop()");
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        // Getting onto the screen
-        Log.v(TAG, "onResume()");
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        // Leaving the screen
-        Log.v(TAG, "onPause()");
-    }
-
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        // Before onDestroy()
-        Log.v(TAG, "onDestroyView()");
     }
 
     @Override
@@ -208,13 +188,6 @@ public class ServerFragment extends Fragment {
         }
     }
 
-    // TODO: Rename method, update argument and hook method into UI event
-    public void onButtonPressed(Uri uri) {
-        if (mListener != null) {
-            mListener.onFragmentInteraction(uri);
-        }
-    }
-
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
@@ -230,21 +203,6 @@ public class ServerFragment extends Fragment {
     public void onDetach() {
         super.onDetach();
         mListener = null;
-    }
-
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p/>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
-    public interface OnFragmentInteractionListener {
-        // TODO: Update argument type and name
-        void onFragmentInteraction(Uri uri);
     }
 
     void onListenClick(View v) {

@@ -4,6 +4,8 @@ import android.app.Application;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.fognl.dronekitbridge.locationrelay.LocationRelay;
+
 /**
  * Created by kellys on 2/26/16.
  */
@@ -26,6 +28,7 @@ public class DKBridgeApp extends Application {
         super.onCreate();
 
         DKBridgePrefs.init(this);
+        LocationRelay.init(this);
     }
 
     public Handler getHandler() {

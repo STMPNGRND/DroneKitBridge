@@ -13,35 +13,19 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.RadioGroup;
 import android.widget.Toast;
 
 import com.fognl.dronekitbridge.DKBridgeApp;
 import com.fognl.dronekitbridge.DKBridgePrefs;
 import com.fognl.dronekitbridge.R;
 import com.fognl.dronekitbridge.comm.SocketClient;
+import com.fognl.dronekitbridge.locationrelay.LocationRelay;
 
-/**
- * A simple {@link Fragment} subclass.
- * Activities that contain this fragment must implement the
- * {@link ClientFragment.OnFragmentInteractionListener} interface
- * to handle interaction events.
- * create an instance of this fragment.
- */
 public class ClientFragment extends Fragment {
     static final String TAG = ClientFragment.class.getSimpleName();
 
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p/>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
     public interface OnFragmentInteractionListener {
-        // TODO: Update argument type and name
         void onFragmentInteraction(Uri uri);
     }
 
@@ -61,6 +45,14 @@ public class ClientFragment extends Fragment {
                     break;
                 }
             }
+        }
+    };
+
+    private final RadioGroup.OnCheckedChangeListener mLocationOptionListener = new RadioGroup.OnCheckedChangeListener() {
+        @Override
+        public void onCheckedChanged(RadioGroup group, int checkedId) {
+            listenForDroneEvents(checkedId == R.id.rdo_drone_location);
+            listenForTargetEvents(checkedId == R.id.rdo_target_location);
         }
     };
 
@@ -99,6 +91,15 @@ public class ClientFragment extends Fragment {
         }
     };
 
+    private final LocationRelay.DroneLocationListener mDroneLocationListener = new LocationRelay.DroneLocationListener() {
+        @Override
+        public void onDroneLocationUpdated(String msg) {
+            if(mClient != null && mClient.isConnected()) {
+                mClient.send(msg);
+            }
+        }
+    };
+
     private EditText mIpEditText;
     private EditText mPortEditText;
     private Button mConnectButton;
@@ -106,6 +107,8 @@ public class ClientFragment extends Fragment {
 
     private SocketClient mClient;
     private Thread mClientThread;
+    private boolean mListeningForDroneEvents;
+    private boolean mListeningForTargetEvents;
 
     public ClientFragment() {
         super();
@@ -136,6 +139,8 @@ public class ClientFragment extends Fragment {
         DKBridgePrefs prefs = DKBridgePrefs.get();
         mIpEditText.setText(prefs.getLastServerIp());
         mPortEditText.setText(prefs.getLastServerPort());
+
+        initLocationOptions(view);
     }
 
     @Override
@@ -173,9 +178,11 @@ public class ClientFragment extends Fragment {
     }
 
     void onSendClick(View v) {
-        if(mClient != null) {
-            mClient.send(new java.util.Date().toString());
-        }
+        // Test sending a target location
+        getActivity().sendBroadcast(LocationRelay.makeDroneLocationEvent());
+//        if(mClient != null) {
+//            mClient.send(new java.util.Date().toString());
+//        }
     }
 
     void setButtonStates() {
@@ -224,6 +231,33 @@ public class ClientFragment extends Fragment {
         final Activity activity = getActivity();
         if(activity != null && !activity.isDestroyed()) {
             Toast.makeText(activity, error.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    void initLocationOptions(View v) {
+        RadioGroup grp = (RadioGroup)v.findViewById(R.id.group_locations);
+        grp.setOnCheckedChangeListener(mLocationOptionListener);
+    }
+
+    void listenForDroneEvents(boolean listen) {
+        if(mListeningForDroneEvents != listen) {
+            if(mListeningForDroneEvents) {
+                LocationRelay.get().stopListeningForDroneEvents();
+            } else {
+                LocationRelay.get().listenForDroneEvents(mDroneLocationListener);
+            }
+
+            mListeningForDroneEvents = listen;
+        }
+    }
+
+    void listenForTargetEvents(boolean listen) {
+        if(mListeningForTargetEvents != listen) {
+            if(mListeningForTargetEvents) {
+                // Stop listening for target events
+            } else {
+                // Start listening for target events
+            }
         }
     }
 }

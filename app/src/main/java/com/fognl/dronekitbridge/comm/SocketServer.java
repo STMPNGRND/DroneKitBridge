@@ -46,6 +46,21 @@ public class SocketServer implements Runnable {
         return null;
     }
 
+    private static String trimCrap(String s) {
+        String str = s;
+
+        final int size = s.length();
+        for(int i = 0; i < size; ++i) {
+            char c = s.charAt(i);
+            if(c != 0) {
+                str = s.substring(i);
+                break;
+            }
+        }
+
+        return str;
+    }
+
     private final Handler mHandler;
     private final Listener mListener;
     private int mPort = DEFAULT_PORT;
@@ -115,7 +130,7 @@ public class SocketServer implements Runnable {
                     mHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            mListener.onData(thisLine);
+                            mListener.onData(trimCrap(thisLine));
                         }
                     });
                 }

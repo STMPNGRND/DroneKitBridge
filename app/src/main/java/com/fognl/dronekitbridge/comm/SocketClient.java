@@ -23,7 +23,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 public class SocketClient implements Runnable {
     static final String TAG = SocketClient.class.getSimpleName();
 
-    static final byte[] CHECK_BUF = new byte[100];
+    static final byte[] CHECK_BUF = new byte[1];
 
     public interface Listener {
         void onConnected();

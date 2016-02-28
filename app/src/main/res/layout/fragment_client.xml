@@ -74,6 +74,39 @@
                 style="@style/Text.Data"
                 />
         </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            >
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/lbl_location_options"
+                style="@style/Text.Prompt.MinWidth"
+                />
+            <RadioGroup
+                android:id="@+id/group_locations"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                >
+                <RadioButton
+                    android:id="@+id/rdo_drone_location"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/rdo_drone_location"
+                    />
+
+                <RadioButton
+                    android:id="@+id/rdo_target_location"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/rdo_target_location"
+                    />
+            </RadioGroup>
+        </LinearLayout>
     </LinearLayout>
 
     <LinearLayout

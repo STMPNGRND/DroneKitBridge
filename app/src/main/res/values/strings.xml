@@ -20,6 +20,7 @@
     <string name="btn_connect">Connect</string>
     <string name="btn_disconnect">Disconnect</string>
     <string name="btn_send">Send</string>
+    <string name="btn_copy">Copy</string>
 
     <!-- ServerFragment -->
     <string name="title_fragment_server">Server</string>
@@ -29,6 +30,7 @@
     <string name="toast_client_disconnected">Client disconnected</string>
     <string name="chk_log">Log incoming data</string>
     <string name="chk_relay_locations">Relay EVT_TARGET_LOCATION</string>
+    <string name="ip_addr_port">IP Address and port</string>
 
     <!-- ClientFragment -->
     <string name="title_fragment_client">Client</string>

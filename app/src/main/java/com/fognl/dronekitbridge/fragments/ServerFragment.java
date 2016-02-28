@@ -1,6 +1,8 @@
 package com.fognl.dronekitbridge.fragments;
 
 import android.app.Activity;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -39,6 +41,11 @@ public class ServerFragment extends Fragment {
             switch(v.getId()) {
                 case R.id.btn_listen: {
                     onListenClick(v);
+                    break;
+                }
+
+                case R.id.btn_copy: {
+                    onCopyClick(v);
                     break;
                 }
             }
@@ -147,6 +154,7 @@ public class ServerFragment extends Fragment {
         mPortEditText.addTextChangedListener(mWatcher);
 
         mButton.setOnClickListener(mClickListener);
+        view.findViewById(R.id.btn_copy).setOnClickListener(mClickListener);
 
         mPortEditText.setText(String.valueOf(SocketServer.DEFAULT_PORT));
 
@@ -213,6 +221,14 @@ public class ServerFragment extends Fragment {
             // Not running, start.
             startServer();
         }
+    }
+
+    void onCopyClick(View v) {
+        ClipboardManager clipMan = (ClipboardManager)getActivity().getSystemService(Context.CLIPBOARD_SERVICE);
+        String ip = String.format("%s:%s", mIpAddrText.getText().toString(), mPortEditText.getText().toString());
+
+        ClipData clip = ClipData.newPlainText(getString(R.string.ip_addr_port), ip);
+        clipMan.setPrimaryClip(clip);
     }
 
     void startServer() {

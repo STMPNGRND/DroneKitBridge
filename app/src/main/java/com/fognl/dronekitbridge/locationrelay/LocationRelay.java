@@ -90,12 +90,12 @@ public class LocationRelay {
         }
     }
 
-    static JSONObject populateDroneLocationEvent(JSONObject jo, Intent intent) {
+    public static JSONObject populateDroneLocationEvent(JSONObject jo, Intent intent) {
         try {
             if(intent.hasExtra(EXTRA_LAT)) jo.put(EXTRA_LAT, intent.getDoubleExtra(EXTRA_LAT, 0));
             if(intent.hasExtra(EXTRA_LNG)) jo.put(EXTRA_LNG, intent.getDoubleExtra(EXTRA_LNG, 0));
             if(intent.hasExtra(EXTRA_ALTITUDE)) jo.put(EXTRA_ALTITUDE, intent.getDoubleExtra(EXTRA_ALTITUDE, 0));
-            if(intent.hasExtra(EXTRA_ACCURACY)) jo.put(EXTRA_ACCURACY, intent.getIntExtra(EXTRA_ACCURACY, 0));
+            if(intent.hasExtra(EXTRA_ACCURACY)) jo.put(EXTRA_ACCURACY, intent.getFloatExtra(EXTRA_ACCURACY, 0));
             if(intent.hasExtra(EXTRA_HEADING)) jo.put(EXTRA_HEADING, intent.getFloatExtra(EXTRA_HEADING, 0));
             if(intent.hasExtra(EXTRA_SPEED)) jo.put(EXTRA_SPEED, intent.getFloatExtra(EXTRA_SPEED, 0));
             if(intent.hasExtra(EXTRA_TIME)) jo.put(EXTRA_TIME, intent.getLongExtra(EXTRA_TIME, 0));
@@ -163,10 +163,33 @@ public class LocationRelay {
         return loc;
     }
 
+    public static Intent toIntent(String action, Location loc) {
+        Intent intent = new Intent(action)
+                .putExtra(EXTRA_LAT, loc.getLatitude())
+                .putExtra(EXTRA_LNG, loc.getLongitude())
+                .putExtra(EXTRA_ALTITUDE, loc.getAltitude())
+                .putExtra(EXTRA_ACCURACY, loc.getAccuracy())
+                .putExtra(EXTRA_HEADING, loc.getBearing())
+                .putExtra(EXTRA_SPEED, loc.getSpeed())
+                .putExtra(EXTRA_TIME, loc.getTime())
+                ;
+        return intent;
+    }
+
     private void setUp() {
     }
 
     private void tearDown() {
+    }
+
+    public void relayAndroidTargetLocation(Location loc) {
+        Intent intent = toIntent(EVT_TARGET_LOCATION_UPDATED, loc);
+        if(intent != null) {
+            mContext.sendBroadcast(intent);
+        }
+        else {
+            Log.w(TAG, "No intent made from location: " + loc);
+        }
     }
 
     public void listenForDroneEvents(DroneLocationListener listener) {

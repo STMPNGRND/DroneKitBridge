@@ -46,7 +46,9 @@ public class SocketServer implements Runnable {
         return null;
     }
 
-    private static String trimCrap(String s) {
+    // Trim off the 0-bytes that may have been added while the client was
+    // periodically pinging the connection.
+    private static String trim(String s) {
         String str = s;
 
         final int size = s.length();
@@ -130,7 +132,7 @@ public class SocketServer implements Runnable {
                     mHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            mListener.onData(trimCrap(thisLine));
+                            mListener.onData(trim(thisLine));
                         }
                     });
                 }

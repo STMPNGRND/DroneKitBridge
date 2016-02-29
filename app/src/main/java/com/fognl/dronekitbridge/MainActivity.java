@@ -1,5 +1,6 @@
 package com.fognl.dronekitbridge;
 
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -17,6 +18,7 @@ import android.view.View;
 
 import com.fognl.dronekitbridge.fragments.ClientFragment;
 import com.fognl.dronekitbridge.fragments.ServerFragment;
+import com.fognl.dronekitbridge.location.LocationAwareness;
 
 import java.util.HashMap;
 
@@ -120,6 +122,18 @@ public class MainActivity extends AppCompatActivity
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
         return true;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+
+        if(requestCode == LocationAwareness.PERMISSION_REQUEST_LOCATION) {
+            if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                LocationAwareness.get().onPermissionGranted();
+            }
+        }
+
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }
 
     void setMainFragment(Fragment frag) {

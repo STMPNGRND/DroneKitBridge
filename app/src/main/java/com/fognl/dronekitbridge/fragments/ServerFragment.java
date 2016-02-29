@@ -11,6 +11,7 @@ import android.support.v4.app.Fragment;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -19,6 +20,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -88,7 +90,7 @@ public class ServerFragment extends Fragment {
             Log.v(TAG, "onData(): data=" + data);
 
             if(mLogIncomingData) {
-                mLogText.append(data + "\n");
+                addLog(data);
             }
 
             if(mRelayLocations) {
@@ -116,6 +118,7 @@ public class ServerFragment extends Fragment {
 
     private TextView mIpAddrText;
     private TextView mLogText;
+    private ScrollView mLogScroll;
     private EditText mPortEditText;
     private Button mButton;
 
@@ -148,7 +151,11 @@ public class ServerFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         mIpAddrText = (TextView)view.findViewById(R.id.text_ip_addr);
+
         mLogText = (TextView)view.findViewById(R.id.text_log);
+        mLogText.setMovementMethod(new ScrollingMovementMethod());
+        mLogScroll = (ScrollView)view.findViewById(R.id.scrollview);
+
         mButton = (Button)view.findViewById(R.id.btn_listen);
         mPortEditText = (EditText)view.findViewById(R.id.edit_port);
         mPortEditText.addTextChangedListener(mWatcher);
@@ -267,5 +274,10 @@ public class ServerFragment extends Fragment {
         if(activity != null && !activity.isDestroyed()) {
             Toast.makeText(activity, error.getMessage(), Toast.LENGTH_LONG).show();
         }
+    }
+
+    void addLog(String str) {
+        mLogText.append(str + "\n");
+        mLogScroll.scrollTo(0, mLogScroll.getBottom());
     }
 }

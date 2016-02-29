@@ -2,34 +2,49 @@ package com.fognl.dronekitbridge.fragments;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.text.method.ScrollingMovementMethod;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.RadioGroup;
+import android.widget.ScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.fognl.dronekitbridge.DKBridgeApp;
 import com.fognl.dronekitbridge.DKBridgePrefs;
 import com.fognl.dronekitbridge.R;
 import com.fognl.dronekitbridge.comm.SocketClient;
+import com.fognl.dronekitbridge.location.LocationAwareness;
 import com.fognl.dronekitbridge.locationrelay.LocationRelay;
+
+import org.json.JSONObject;
 
 public class ClientFragment extends Fragment {
     static final String TAG = ClientFragment.class.getSimpleName();
 
+    static String formatForLog(Location loc) {
+        return String.format("Location: %.3f/%.3f, speed=%.2f heading=%.2f", loc.getLatitude(), loc.getLongitude(), loc.getSpeed(), loc.getBearing());
+    }
+
     public interface OnFragmentInteractionListener {
         void onFragmentInteraction(Uri uri);
     }
-
-    private OnFragmentInteractionListener mListener;
 
     private final View.OnClickListener mClickListener = new View.OnClickListener() {
         @Override
@@ -52,7 +67,7 @@ public class ClientFragment extends Fragment {
         @Override
         public void onCheckedChanged(RadioGroup group, int checkedId) {
             listenForDroneEvents(checkedId == R.id.rdo_drone_location);
-            listenForTargetEvents(checkedId == R.id.rdo_target_location);
+            listenForLocationEvents(checkedId == R.id.rdo_my_location);
         }
     };
 
@@ -100,15 +115,58 @@ public class ClientFragment extends Fragment {
         }
     };
 
+    private final LocationListener mLocationListener = new LocationListener() {
+        @Override
+        public void onLocationChanged(Location location) {
+
+            if(mLoggingOutput) {
+                addLog(formatForLog(location));
+            }
+
+            // Got an Android location. Conver to an Intent
+            final Intent intent = LocationRelay.toIntent(LocationRelay.EVT_TARGET_LOCATION_UPDATED, location);
+
+            if(intent != null) {
+                // Broadcast it system-wide.
+                getActivity().sendBroadcast(intent);
+
+                // If connected, send it across the socket connection.
+                JSONObject jo = LocationRelay.populateDroneLocationEvent(new JSONObject(), intent);
+                if(jo != null) {
+                    sendData(jo.toString());
+                }
+            }
+        }
+
+        @Override
+        public void onStatusChanged(String provider, int status, Bundle extras) {
+
+        }
+
+        @Override
+        public void onProviderEnabled(String provider) {
+
+        }
+
+        @Override
+        public void onProviderDisabled(String provider) {
+            Log.v(TAG, "Provider " + provider + " disabled");
+        }
+    };
+
     private EditText mIpEditText;
     private EditText mPortEditText;
+    private TextView mLogText;
+    private ScrollView mLogScroll;
     private Button mConnectButton;
     private Button mSendButton;
 
     private SocketClient mClient;
     private Thread mClientThread;
     private boolean mListeningForDroneEvents;
-    private boolean mListeningForTargetEvents;
+    private boolean mListeningForMyLocations;
+    private boolean mLoggingOutput;
+    private OnFragmentInteractionListener mListener;
 
     public ClientFragment() {
         super();
@@ -127,6 +185,10 @@ public class ClientFragment extends Fragment {
         mIpEditText = (EditText)view.findViewById(R.id.edit_ip_addr);
         mPortEditText = (EditText)view.findViewById(R.id.edit_port);
 
+        mLogText = (TextView)view.findViewById(R.id.text_log);
+        mLogText.setMovementMethod(new ScrollingMovementMethod());
+        mLogScroll = (ScrollView)view.findViewById(R.id.scrollview);
+
         mIpEditText.addTextChangedListener(mWatcher);
         mPortEditText.addTextChangedListener(mWatcher);
 
@@ -141,6 +203,13 @@ public class ClientFragment extends Fragment {
         mPortEditText.setText(prefs.getLastServerPort());
 
         initLocationOptions(view);
+
+        ((CheckBox)view.findViewById(R.id.chk_log)).setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                mLoggingOutput = isChecked;
+            }
+        });
     }
 
     @Override
@@ -167,6 +236,14 @@ public class ClientFragment extends Fragment {
         if(mClient != null) {
             disconnectClient();
         }
+
+        if(mListeningForDroneEvents) {
+            listenForDroneEvents(false);
+        }
+
+        if(mListeningForMyLocations) {
+            listenForLocationEvents(false);
+        }
     }
 
     void onConnectClick(View v) {
@@ -180,9 +257,17 @@ public class ClientFragment extends Fragment {
     void onSendClick(View v) {
         // Test sending a target location
         getActivity().sendBroadcast(LocationRelay.makeDroneLocationEvent());
-//        if(mClient != null) {
-//            mClient.send(new java.util.Date().toString());
-//        }
+//        sendData(new java.util.Date().toString());
+    }
+
+    void sendData(String data) {
+        if(mClient != null) {
+            mClient.send(data);
+
+            if(mLoggingOutput) {
+                addLog(data);
+            }
+        }
     }
 
     void setButtonStates() {
@@ -251,13 +336,22 @@ public class ClientFragment extends Fragment {
         }
     }
 
-    void listenForTargetEvents(boolean listen) {
-        if(mListeningForTargetEvents != listen) {
-            if(mListeningForTargetEvents) {
-                // Stop listening for target events
+    void listenForLocationEvents(boolean listen) {
+        if(mListeningForMyLocations != listen) {
+            if(mListeningForMyLocations) {
+                // Stop listening for locations
+                LocationAwareness.get().stopLocationUpdates();
             } else {
-                // Start listening for target events
+                // Start listening for locations
+                LocationAwareness.get().startLocationUpdates(getActivity(), LocationManager.GPS_PROVIDER, mLocationListener);
             }
+
+            mListeningForMyLocations = listen;
         }
+    }
+
+    void addLog(String str) {
+        mLogText.append(str + "\n");
+        mLogScroll.scrollTo(0, mLogScroll.getBottom());
     }
 }

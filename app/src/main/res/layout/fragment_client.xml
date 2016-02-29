@@ -100,10 +100,10 @@
                     />
 
                 <RadioButton
-                    android:id="@+id/rdo_target_location"
+                    android:id="@+id/rdo_my_location"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/rdo_target_location"
+                    android:text="@string/rdo_my_location"
                     />
             </RadioGroup>
         </LinearLayout>
@@ -132,17 +132,30 @@
             />
     </LinearLayout>
 
-    <ScrollView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/layout_buttons"
+        android:orientation="vertical"
         >
-        <TextView
-            android:id="@+id/text_log"
+        <CheckBox
+            android:id="@+id/chk_log"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/chk_log_output"
+            />
+        <ScrollView
+            android:id="@+id/scrollview"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            style="@style/Text.Log"
-            />
-    </ScrollView>
-
+            android:padding="@dimen/padding_tiny"
+            >
+            <TextView
+                android:id="@+id/text_log"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                style="@style/Text.Log"
+                />
+        </ScrollView>
+    </LinearLayout>
 </RelativeLayout>

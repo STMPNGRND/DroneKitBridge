@@ -28,8 +28,9 @@
     <string name="toast_server_stopped">Server Stopped</string>
     <string name="toast_client_connected">Client connected</string>
     <string name="toast_client_disconnected">Client disconnected</string>
-    <string name="chk_log">Log incoming data</string>
-    <string name="chk_relay_locations">Relay EVT_TARGET_LOCATION</string>
+    <string name="chk_log_incoming">Log incoming data</string>
+    <string name="chk_log_output">Log output</string>
+    <string name="chk_relay_locations">Relay target locations</string>
     <string name="ip_addr_port">IP Address and port</string>
 
     <!-- ClientFragment -->
@@ -38,6 +39,11 @@
     <string name="toast_client_connect_failed">Connection to server failed.</string>
 
     <string name="lbl_location_options">Locations:</string>
-    <string name="rdo_drone_location">DRONE_LOCATION_UPDATED events</string>
-    <string name="rdo_target_location">TARGET_LOCATION_UPDATED events</string>
+    <string name="rdo_drone_location">Send drone locations from Tower</string>
+    <string name="rdo_my_location">Send my locations</string>
+
+    <!-- LocationAwareness -->
+    <string name="toast_location_rationale">Locations are needed for sending to the drone.</string>
+    <string name="dlg_enable_location_title">Enable Locations</string>
+    <string name="dlg_enable_location_msg">Your Location settings are currently disabled. Please enable Locations.</string>
 </resources>

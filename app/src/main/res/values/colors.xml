@@ -6,4 +6,5 @@
 
     <color name="text_title">#FF232323</color>
     <color name="text_tip">#FF676767</color>
+    <color name="BottomBar_background">#BBFFFFFF</color>
 </resources>

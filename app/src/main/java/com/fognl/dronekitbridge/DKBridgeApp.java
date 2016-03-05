@@ -6,6 +6,7 @@ import android.os.Looper;
 
 import com.fognl.dronekitbridge.location.LocationAwareness;
 import com.fognl.dronekitbridge.locationrelay.LocationRelay;
+import com.fognl.dronekitbridge.speech.Speech;
 
 /**
  * Created by kellys on 2/26/16.
@@ -31,6 +32,7 @@ public class DKBridgeApp extends Application {
         DKBridgePrefs.init(this);
         LocationRelay.init(this);
         LocationAwareness.init(this);
+        Speech.init(this);
     }
 
     public Handler getHandler() {

@@ -29,8 +29,8 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class RemoteTrackFragment extends Fragment {
-    static final String TAG = RemoteTrackFragment.class.getSimpleName();
+public class RemoteTargetFragment extends Fragment {
+    static final String TAG = RemoteTargetFragment.class.getSimpleName();
 
     private final View.OnClickListener mClickListener = new View.OnClickListener() {
         @Override
@@ -101,7 +101,7 @@ public class RemoteTrackFragment extends Fragment {
 
     private boolean mRunning = false;
 
-    public RemoteTrackFragment() {
+    public RemoteTargetFragment() {
         super();
     }
 
@@ -166,6 +166,8 @@ public class RemoteTrackFragment extends Fragment {
                 LocationAwareness.get().stopLocationUpdates();
                 mButton.setText(R.string.btn_start);
                 mStatusText.setText("");
+
+                deleteUserFromGroup();
             }
             else {
                 // Start listening for locations
@@ -178,6 +180,27 @@ public class RemoteTrackFragment extends Fragment {
 
             mRunning = running;
         }
+    }
+
+    void deleteUserFromGroup() {
+        LocationRelayManager.deleteUser(DKBridgeApp.get(), getGroupId(), getUserId(), new Callback<ServerResponse>() {
+            @Override
+            public void onResponse(Call<ServerResponse> call, Response<ServerResponse> response) {
+                final ServerResponse res = response.body();
+                if(res.hasError()) {
+                    Toast.makeText(DKBridgeApp.get(), res.getError(), Toast.LENGTH_SHORT).show();
+                }
+                else {
+                    mStatusText.setText(res.getStatus());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ServerResponse> call, Throwable err) {
+                Log.e(TAG, err.getMessage(), err);
+                Toast.makeText(DKBridgeApp.get(), err.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     String getGroupId() { return mGroupText.getText().toString(); }

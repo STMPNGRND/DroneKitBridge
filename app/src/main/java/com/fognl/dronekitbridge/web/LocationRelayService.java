@@ -2,6 +2,7 @@ package com.fognl.dronekitbridge.web;
 
 import java.util.List;
 
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.DELETE;
@@ -17,16 +18,16 @@ public interface LocationRelayService {
     Call<ServerResponse> sendLocation(@Body UserLocationPostBody location);
 
     @DELETE("/follow/user/{groupId}/{userId}")
-    Call<String> deleteUserFromGroup(@Path("groupId") String groupId, @Path("userId") String userId);
+    Call<ServerResponse> deleteUserFromGroup(@Path("groupId") String groupId, @Path("userId") String userId);
 
     @DELETE("/follow/group/{groupId}")
-    Call<String> deleteGroup(@Path("groupId") String groupId);
+    Call<ServerResponse> deleteGroup(@Path("groupId") String groupId);
 
     @GET("/follow/groups")
     Call<List<String>> retrieveGroupList();
 
     @GET("/follow/group/{groupId}")
-    Call<String> followGroup(@Path("groupId") String groupId);
+    Call<ResponseBody> followGroup(@Path("groupId") String groupId);
 
     @GET("/follow/user/{groupId}/{userId}")
     Call<String> followUserInGroup(@Path("groupId") String groupId, @Path("userId") String userId);

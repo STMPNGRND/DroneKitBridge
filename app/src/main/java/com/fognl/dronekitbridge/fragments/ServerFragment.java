@@ -279,5 +279,6 @@ public class ServerFragment extends Fragment {
     void addLog(String str) {
         mLogText.append(str + "\n");
         mLogScroll.scrollTo(0, mLogScroll.getBottom());
+        mLogScroll.fullScroll(View.FOCUS_DOWN);
     }
 }

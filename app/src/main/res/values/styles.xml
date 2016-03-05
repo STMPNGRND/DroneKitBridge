@@ -22,6 +22,7 @@
     </style>
 
     <style name="Text"></style>
+    <style name="Button"></style>
 
     <style name="Text.Title">
         <item name="android:textSize">@dimen/textsize_large</item>
@@ -55,5 +56,17 @@
 
     <style name="Text.Status">
         <item name="android:typeface">monospace</item>
+    </style>
+
+    <style name="Text.Important">
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="Button.NoBorder">
+        <item name="android:background">@null</item>
+    </style>
+
+    <style name="BottomBar">
+        <item name="android:background">@color/BottomBar_background</item>
     </style>
 </resources>

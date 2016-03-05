@@ -7,9 +7,10 @@
     <string name="action_settings">Settings</string>
 
     <string name="nav_mode">Mode</string>
-    <string name="nav_server">Server</string>
-    <string name="nav_client">Client</string>
-    <string name="nav_remote_track">Remote Tracking</string>
+    <string name="nav_server">Relay Server</string>
+    <string name="nav_client">Relay Client</string>
+    <string name="nav_remote_track">Remote Target</string>
+    <string name="nav_tracker">Track Targets</string>
 
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
@@ -17,6 +18,7 @@
     <string name="lbl_ip_addr">IP Address:</string>
     <string name="lbl_port">Port:</string>
     <string name="btn_listen">Listen</string>
+    <string name="btn_refresh">Refresh</string>
     <string name="btn_stop_listening">Stop</string>
     <string name="btn_connect">Connect</string>
     <string name="btn_disconnect">Disconnect</string>
@@ -54,6 +56,22 @@
     <string name="hint_userId">Any unique user id</string>
     <string name="hint_group_user_ids">Your <b>group ID</b> and <b>user ID</b> can be anything, as long as they\'re unique.
         Multiple user ids within the same group will all show on the map at the same time.</string>
+
+    <!-- TrackerFragment -->
+    <string name="title_fragment_tracker">Track Targets</string>
+    <string name="summary_fragment_tracker">Use this to track multiple remote targets. Select a group to monitor, and the members of the group will show on the map as they move. To follow a specific target, select it.</string>
+    <string name="lbl_group">Group:</string>
+    <string name="chk_pan_map">Pan to follow targets</string>
+    <string name="follow_user_fmt">Following %s</string>
+    <string name="say_warn_followed_user_died">Warning: Follow Target has stopped reporting locations.</string>
+    <string name="btn_stop_following_user">Stop following</string>
+    <string name="lbl_send_type">Relay type:</string>
+    <string name="rdo_broadcast">Broadcast to Tower</string>
+    <string name="rdo_socket">Send to Relay Server</string>
+    <string name="hint_ip_addr">IP Address</string>
+    <string name="hint_port">Port</string>
+    <string name="port_default">8888</string>
+    <string name="tip_tracker_socket_connect">Connect to this app on a different device</string>
 
     <!-- LocationAwareness -->
     <string name="toast_location_rationale">Locations are needed for sending to the drone.</string>

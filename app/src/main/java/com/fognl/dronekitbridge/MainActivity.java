@@ -17,8 +17,9 @@ import android.view.MenuItem;
 import android.view.View;
 
 import com.fognl.dronekitbridge.fragments.ClientFragment;
-import com.fognl.dronekitbridge.fragments.RemoteTrackFragment;
+import com.fognl.dronekitbridge.fragments.RemoteTargetFragment;
 import com.fognl.dronekitbridge.fragments.ServerFragment;
+import com.fognl.dronekitbridge.fragments.TrackerFragment;
 import com.fognl.dronekitbridge.location.LocationAwareness;
 
 import java.util.HashMap;
@@ -35,7 +36,8 @@ public class MainActivity extends AppCompatActivity
     private Fragment mMainFragment;
     private ServerFragment mServerFragment;
     private ClientFragment mClientFragment;
-    private RemoteTrackFragment mRemoteTrackFragment;
+    private RemoteTargetFragment mRemoteTargetFragment;
+    private TrackerFragment mTrackerFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,13 +61,10 @@ public class MainActivity extends AppCompatActivity
         drawer.setDrawerListener(toggle);
         toggle.syncState();
 
-        mServerFragment = new ServerFragment();
-        mClientFragment = new ClientFragment();
-        mRemoteTrackFragment = new RemoteTrackFragment();
-
-        mFragMap.put(DKBridgePrefs.FRAG_SERVER, mServerFragment);
-        mFragMap.put(DKBridgePrefs.FRAG_CLIENT, mClientFragment);
-        mFragMap.put(DKBridgePrefs.FRAG_REMOTE, mRemoteTrackFragment);
+        mFragMap.put(DKBridgePrefs.FRAG_SERVER, mServerFragment = new ServerFragment());
+        mFragMap.put(DKBridgePrefs.FRAG_CLIENT, mClientFragment = new ClientFragment());
+        mFragMap.put(DKBridgePrefs.FRAG_REMOTE, mRemoteTargetFragment = new RemoteTargetFragment());
+        mFragMap.put(DKBridgePrefs.FRAG_TRACKER, mTrackerFragment = new TrackerFragment());
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
@@ -123,7 +122,12 @@ public class MainActivity extends AppCompatActivity
             }
 
             case R.id.nav_remote_track: {
-                setMainFragment(mRemoteTrackFragment);
+                setMainFragment(mRemoteTargetFragment);
+                break;
+            }
+
+            case R.id.nav_tracker: {
+                setMainFragment(mTrackerFragment);
                 break;
             }
         }
@@ -155,9 +159,12 @@ public class MainActivity extends AppCompatActivity
             String tag = null;
             if(frag == mServerFragment) tag = DKBridgePrefs.FRAG_SERVER;
             if(frag == mClientFragment) tag = DKBridgePrefs.FRAG_CLIENT;
-            if(frag == mRemoteTrackFragment) tag = DKBridgePrefs.FRAG_REMOTE;
+            if(frag == mRemoteTargetFragment) tag = DKBridgePrefs.FRAG_REMOTE;
+            if(frag == mTrackerFragment) tag = DKBridgePrefs.FRAG_TRACKER;
 
-            DKBridgePrefs.get().setLastFragment(tag);
+            if(tag != null) {
+                DKBridgePrefs.get().setLastFragment(tag);
+            }
         }
     }
 

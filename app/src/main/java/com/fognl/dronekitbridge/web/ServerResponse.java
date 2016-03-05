@@ -16,4 +16,8 @@ public class ServerResponse {
     }
 
     public boolean hasError() { return (error != null); }
+
+    public String getMessage() {
+        return (hasError())? getError(): getStatus();
+    }
 }

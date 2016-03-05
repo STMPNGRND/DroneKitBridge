@@ -8,6 +8,8 @@ import android.location.Location;
 import android.os.SystemClock;
 import android.util.Log;
 
+import com.fognl.dronekitbridge.web.UserLocation;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -170,6 +172,19 @@ public class LocationRelay {
                 .putExtra(EXTRA_ALTITUDE, loc.getAltitude())
                 .putExtra(EXTRA_ACCURACY, loc.getAccuracy())
                 .putExtra(EXTRA_HEADING, loc.getBearing())
+                .putExtra(EXTRA_SPEED, loc.getSpeed())
+                .putExtra(EXTRA_TIME, loc.getTime())
+                ;
+        return intent;
+    }
+
+    public static Intent toIntent(String action, UserLocation loc) {
+        Intent intent = new Intent(action)
+                .putExtra(EXTRA_LAT, loc.getLat())
+                .putExtra(EXTRA_LNG, loc.getLng())
+                .putExtra(EXTRA_ALTITUDE, loc.getAltitude())
+                .putExtra(EXTRA_ACCURACY, loc.getAccuracy())
+                .putExtra(EXTRA_HEADING, loc.getHeading())
                 .putExtra(EXTRA_SPEED, loc.getSpeed())
                 .putExtra(EXTRA_TIME, loc.getTime())
                 ;

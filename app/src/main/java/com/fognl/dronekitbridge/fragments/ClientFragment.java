@@ -257,7 +257,6 @@ public class ClientFragment extends Fragment {
     void onSendClick(View v) {
         // Test sending a target location
         getActivity().sendBroadcast(LocationRelay.makeDroneLocationEvent());
-//        sendData(new java.util.Date().toString());
     }
 
     void sendData(String data) {

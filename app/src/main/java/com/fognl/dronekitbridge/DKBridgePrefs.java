@@ -12,12 +12,20 @@ public class DKBridgePrefs {
 
     public static final String PREF_SERVER_IP = "server_ip";
     public static final String PREF_SERVER_PORT = "server_port";
+
     public static final String PREF_LAST_FRAGMENT = "last_fragment";
         public static final String FRAG_SERVER = "server";
         public static final String FRAG_CLIENT = "client";
         public static final String FRAG_REMOTE = "remote_track";
+        public static final String FRAG_TRACKER = "tracker";
+
     public static final String PREF_LAST_GROUPID = "last_groupid";
     public static final String PREF_LAST_USERID = "last_userid";
+
+    public static final String PREF_PAN_FOLLOW = "pan_to_follow";
+    public static final String PREF_TRACKER_RELAY_TYPE = "tracker_relay_type";
+        public static final String RELAY_TYPE_BCAST = "bcast";
+        public static final String RELAY_TYPE_SOCKET = "socket";
 
     public static void init(Context context) {
         if(sInstance == null) {
@@ -54,6 +62,12 @@ public class DKBridgePrefs {
 
     public String getLastUserId() { return getPrefs().getString(PREF_LAST_USERID, null); }
     public void setLastUserId(String userId) { getPrefs().edit().putString(PREF_LAST_USERID, userId).commit(); }
+
+    public boolean getPanToFollow() { return getPrefs().getBoolean(PREF_PAN_FOLLOW, true); }
+    public void setPanToFollow(boolean pan) { getPrefs().edit().putBoolean(PREF_PAN_FOLLOW, pan).commit(); }
+
+    public String getTrackerRelayType() { return getPrefs().getString(PREF_TRACKER_RELAY_TYPE, RELAY_TYPE_BCAST); }
+    public void setTrackerRelayType(String type) { getPrefs().edit().putString(PREF_TRACKER_RELAY_TYPE, type).commit(); }
 
     public void setLastGroupAndUserId(String groupId, String userId) {
         getPrefs()

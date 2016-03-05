@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="retro_base_url">http://location-relay.herokuapp.com</string>
+</resources>

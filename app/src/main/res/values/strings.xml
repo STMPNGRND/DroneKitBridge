@@ -9,6 +9,7 @@
     <string name="nav_mode">Mode</string>
     <string name="nav_server">Server</string>
     <string name="nav_client">Client</string>
+    <string name="nav_remote_track">Remote Tracking</string>
 
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
@@ -21,6 +22,8 @@
     <string name="btn_disconnect">Disconnect</string>
     <string name="btn_send">Send</string>
     <string name="btn_copy">Copy</string>
+    <string name="btn_start">Start</string>
+    <string name="btn_stop">Stop</string>
 
     <!-- ServerFragment -->
     <string name="title_fragment_server">Server</string>
@@ -41,6 +44,16 @@
     <string name="lbl_location_options">Locations:</string>
     <string name="rdo_drone_location">Send drone locations from Tower</string>
     <string name="rdo_my_location">Send my locations</string>
+
+    <!-- RemoteTrackFragment -->
+    <string name="title_fragment_remote_track">Remote Tracking</string>
+    <string name="summary_fragment_remote_track">Use this to let the drone track your location as you move around.</string>
+    <string name="lbl_groupId">Group ID:</string>
+    <string name="hint_groupId">Any unique group id</string>
+    <string name="lbl_userId">User ID:</string>
+    <string name="hint_userId">Any unique user id</string>
+    <string name="hint_group_user_ids">Your <b>group ID</b> and <b>user ID</b> can be anything, as long as they\'re unique.
+        Multiple user ids within the same group will all show on the map at the same time.</string>
 
     <!-- LocationAwareness -->
     <string name="toast_location_rationale">Locations are needed for sending to the drone.</string>

@@ -48,4 +48,12 @@
     <style name="Text.Log">
         <item name="android:typeface">monospace</item>
     </style>
+
+    <style name="Text.Tip">
+        <item name="android:textColor">@color/text_tip</item>
+    </style>
+
+    <style name="Text.Status">
+        <item name="android:typeface">monospace</item>
+    </style>
 </resources>

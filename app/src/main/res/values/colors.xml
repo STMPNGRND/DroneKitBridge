@@ -5,4 +5,5 @@
     <color name="colorAccent">#FF4081</color>
 
     <color name="text_title">#FF232323</color>
+    <color name="text_tip">#FF676767</color>
 </resources>

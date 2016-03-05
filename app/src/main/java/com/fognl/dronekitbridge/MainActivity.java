@@ -17,6 +17,7 @@ import android.view.MenuItem;
 import android.view.View;
 
 import com.fognl.dronekitbridge.fragments.ClientFragment;
+import com.fognl.dronekitbridge.fragments.RemoteTrackFragment;
 import com.fognl.dronekitbridge.fragments.ServerFragment;
 import com.fognl.dronekitbridge.location.LocationAwareness;
 
@@ -34,6 +35,7 @@ public class MainActivity extends AppCompatActivity
     private Fragment mMainFragment;
     private ServerFragment mServerFragment;
     private ClientFragment mClientFragment;
+    private RemoteTrackFragment mRemoteTrackFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,9 +61,11 @@ public class MainActivity extends AppCompatActivity
 
         mServerFragment = new ServerFragment();
         mClientFragment = new ClientFragment();
+        mRemoteTrackFragment = new RemoteTrackFragment();
 
         mFragMap.put(DKBridgePrefs.FRAG_SERVER, mServerFragment);
         mFragMap.put(DKBridgePrefs.FRAG_CLIENT, mClientFragment);
+        mFragMap.put(DKBridgePrefs.FRAG_REMOTE, mRemoteTrackFragment);
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
@@ -117,6 +121,11 @@ public class MainActivity extends AppCompatActivity
                 setMainFragment(mClientFragment);
                 break;
             }
+
+            case R.id.nav_remote_track: {
+                setMainFragment(mRemoteTrackFragment);
+                break;
+            }
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -143,8 +152,11 @@ public class MainActivity extends AppCompatActivity
                     .replace(R.id.fragment_holder, frag)
                     .commit();
 
-            // TODO: Yuck. This could be cleaner.
-            final String tag = (frag == mServerFragment)? DKBridgePrefs.FRAG_SERVER: DKBridgePrefs.FRAG_CLIENT;
+            String tag = null;
+            if(frag == mServerFragment) tag = DKBridgePrefs.FRAG_SERVER;
+            if(frag == mClientFragment) tag = DKBridgePrefs.FRAG_CLIENT;
+            if(frag == mRemoteTrackFragment) tag = DKBridgePrefs.FRAG_REMOTE;
+
             DKBridgePrefs.get().setLastFragment(tag);
         }
     }

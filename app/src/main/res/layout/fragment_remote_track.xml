@@ -6,7 +6,6 @@
     style="@style/MainFragment"
     tools:context=".fragments.RemoteTargetFragment"
     >
-
     <TextView
         android:id="@+id/text_title"
         android:layout_width="match_parent"
@@ -96,7 +95,16 @@
             android:id="@+id/text_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:text="status"
             style="@style/Text.Status"
             />
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/text_run_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        style="@style/Text.Status"
+        />
 </RelativeLayout>

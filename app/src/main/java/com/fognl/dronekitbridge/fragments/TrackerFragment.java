@@ -87,7 +87,7 @@ public class TrackerFragment extends Fragment {
         }
 
         boolean isStale() {
-            return (staleCount > 4);
+            return (staleCount >= 10);
         }
 
         int getStaleCount() { return staleCount; }
@@ -371,6 +371,7 @@ public class TrackerFragment extends Fragment {
     void stopPinging() {
         mHandler.removeCallbacks(mPingGroup);
         mRunning = false;
+        stopFollowingUser();
         setButtonStates();
     }
 
@@ -573,14 +574,12 @@ public class TrackerFragment extends Fragment {
 
         for(String user : map.keySet()) {
             final UserLocation location = map.get(user);
-            Log.v(TAG, "setMarkers: user=" + user + " location=" + location);
 
             StaleLocation stale = mStaleLocations.get(user);
 
             if(stale != null) {
                 long diff = location.getTime() - stale.location.getTime();
                 totalDiff += diff;
-                Log.v(TAG, "diff=" + diff + " totalDiff=" + totalDiff);
 
                 stale.checkAndRemember(location);
 
@@ -609,6 +608,14 @@ public class TrackerFragment extends Fragment {
             if(marker != null) {
                 marker.setPosition(position);
                 marker.setSnippet(snippet);
+
+                if(isFollowedUser(user)) {
+                    if(marker.isInfoWindowShown()) {
+                        // force an update (should be a better way to do this)
+                        marker.hideInfoWindow();
+                        marker.showInfoWindow();
+                    }
+                }
             }
             else {
                 marker = mMap.addMarker(
@@ -632,13 +639,7 @@ public class TrackerFragment extends Fragment {
         }
 
         if(!map.isEmpty()) {
-            long avgDiff = (totalDiff / map.size());
-            Log.v(TAG, "avgDiff=" + avgDiff);
-
-            long interval = (avgDiff < 1000)?
-                    Math.max(avgDiff, 500): DEF_PING_INTERVAL;
-
-            mPingInterval = interval;
+            mPingInterval = DEF_PING_INTERVAL;
             Log.v(TAG, "mPingInterval=" + mPingInterval);
         }
         else {
@@ -651,6 +652,7 @@ public class TrackerFragment extends Fragment {
             Marker marker = mMarkers.get(user);
             if(marker != null) {
                 marker.remove();
+                mMarkers.remove(user);
             }
 
             if(isFollowedUser(user)) {

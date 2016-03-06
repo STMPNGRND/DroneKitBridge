@@ -37,20 +37,53 @@ public class LocationRelayManager {
     private static LocationRelayService sService;
 
     public static void sendLocation(
-            Context context, String groupId, String userId, Location location, Callback<ServerResponse> callback) {
+            Context context, String groupId, String userId, Location location, final Callback<ServerResponse> callback) {
         final UserLocation loc = UserLocation.populate(new UserLocation(), location);
 
         final LocationRelayService service = getLocationRelayService(context);
         final UserLocationPostBody body = new UserLocationPostBody(groupId, userId, loc);
 
         Call<ServerResponse> call = service.sendLocation(body);
-        call.enqueue(callback);
+        call.enqueue(new Callback<ServerResponse>() {
+            @Override
+            public void onResponse(Call<ServerResponse> call, Response<ServerResponse> response) {
+                ServerResponse sr = response.body();
+                if(sr != null) {
+                    callback.onResponse(call, response);
+                }
+                else {
+                    callback.onFailure(call, new Exception("Server appears to be down (or dyno is stopped)"));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ServerResponse> call, Throwable t) {
+                callback.onFailure(call, t);
+            }
+        });
     }
 
-    public static void retrieveGroups(Context context, Callback<List<String>> callback) {
+    public static void retrieveGroups(Context context, final Callback<List<String>> callback) {
         final LocationRelayService service = getLocationRelayService(context);
         Call<List<String>> call = service.retrieveGroupList();
-        call.enqueue(callback);
+        call.enqueue(new Callback<List<String>>() {
+
+            @Override
+            public void onResponse(Call<List<String>> call, Response<List<String>> response) {
+                List<String> data = response.body();
+                if(data != null) {
+                    callback.onResponse(call, response);
+                }
+                else {
+                    callback.onFailure(call, new Exception("Server is down or dyno is stopped"));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<String>> call, Throwable t) {
+                callback.onFailure(call, t);
+            }
+        });
     }
 
     public static void retrieveGroupLocations(Context context, String groupId,
@@ -64,27 +97,32 @@ public class LocationRelayManager {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 try {
-                    final HashMap<String, UserLocation> map = new HashMap<String, UserLocation>();
+                    if(response != null && response.body() != null) {
+                        final HashMap<String, UserLocation> map = new HashMap<String, UserLocation>();
 
-                    String str = response.body().string();
-                    JSONObject jo = new JSONObject(str);
+                        String str = response.body().string();
+                        JSONObject jo = new JSONObject(str);
 
-                    JSONArray names = jo.names();
+                        JSONArray names = jo.names();
 
-                    if(names != null) {
-                        final int len = names.length();
-                        for(int i = 0; i < len; ++i) {
-                            String name = names.getString(i);
-                            JSONObject sub = jo.getJSONObject(name);
-                            JSONObject joLoc = sub.optJSONObject("loc");
-                            if(joLoc != null) {
-                                UserLocation userLoc = UserLocation.populate(new UserLocation(), joLoc);
-                                map.put(name, userLoc);
+                        if(names != null) {
+                            final int len = names.length();
+                            for(int i = 0; i < len; ++i) {
+                                String name = names.getString(i);
+                                JSONObject sub = jo.getJSONObject(name);
+                                JSONObject joLoc = sub.optJSONObject("loc");
+                                if(joLoc != null) {
+                                    UserLocation userLoc = UserLocation.populate(new UserLocation(), joLoc);
+                                    map.put(name, userLoc);
+                                }
                             }
                         }
-                    }
 
-                    callback.complete(map);
+                        callback.complete(map);
+                    }
+                    else {
+                        callback.error(new Exception("Server is down or dyno is stopped"));
+                    }
                 }
                 catch(Throwable ex) {
                     callback.error(ex);
@@ -99,11 +137,28 @@ public class LocationRelayManager {
     }
 
     public static void deleteUser(Context context,
-                                  String groupId, String userId, Callback<ServerResponse> callback) {
+                                  String groupId, String userId,
+                                  final Callback<ServerResponse> callback) {
         LocationRelayService service = getLocationRelayService(context);
 
         final Call<ServerResponse> call = service.deleteUserFromGroup(groupId, userId);
-        call.enqueue(callback);
+        call.enqueue(new Callback<ServerResponse>() {
+
+            @Override
+            public void onResponse(Call<ServerResponse> call, Response<ServerResponse> response) {
+                if(response.body() != null) {
+                    callback.onResponse(call, response);
+                }
+                else {
+                    callback.onFailure(call, new Exception("Server is down or dyno is stopped"));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ServerResponse> call, Throwable t) {
+                callback.onFailure(call, t);
+            }
+        });
     }
 
     public static void deleteGroup(Context context, String groupId, Callback<ServerResponse> callback) {

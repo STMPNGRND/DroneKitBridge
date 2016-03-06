@@ -66,7 +66,36 @@ public class TrackerFragment extends Fragment {
         None, Broadcast, Socket
     };
 
-    private static final long PING_INTERVAL = 2000;
+    static class StaleLocation {
+        UserLocation location;
+        int staleCount;
+        private boolean stale = false;
+
+        StaleLocation(UserLocation loc) {
+            location = loc;
+        }
+
+        void checkAndRemember(UserLocation loc) {
+            if(location.equals(loc)) {
+                ++staleCount;
+            }
+            else {
+                --staleCount;
+            }
+
+            location = loc;
+        }
+
+        boolean isStale() {
+            return (staleCount > 4);
+        }
+
+        int getStaleCount() { return staleCount; }
+    }
+
+    private static final long DEF_PING_INTERVAL = 1000;
+    private static final long SLOW_PING_INTERVAL = 5000;
+
     private static final float[] MARKER_HUES = new float[] {
             BitmapDescriptorFactory.HUE_RED,
             BitmapDescriptorFactory.HUE_YELLOW,
@@ -184,9 +213,10 @@ public class TrackerFragment extends Fragment {
 
     private SocketClient mClient;
     private Thread mClientThread;
+    private long mPingInterval = DEF_PING_INTERVAL;
 
     private final HashMap<String, Marker> mMarkers = new HashMap<String, Marker>();
-    private final HashMap<String, UserLocation> mLastUserLocations = new HashMap<String, UserLocation>();
+    private final HashMap<String, StaleLocation> mStaleLocations = new HashMap<String, StaleLocation>();
 
     public TrackerFragment() {
         super();
@@ -332,17 +362,15 @@ public class TrackerFragment extends Fragment {
 
     void startPinging(String group) {
         mHandler.removeCallbacks(mPingGroup);
-
+        mPingInterval = DEF_PING_INTERVAL;
         mRunning = true;
         mHandler.post(mPingGroup);
-        mStartButton.setText(R.string.btn_stop);
         setButtonStates();
     }
 
     void stopPinging() {
         mHandler.removeCallbacks(mPingGroup);
         mRunning = false;
-        mStartButton.setText(R.string.btn_start);
         setButtonStates();
     }
 
@@ -375,6 +403,7 @@ public class TrackerFragment extends Fragment {
             if(view != null) {
                 mGroupsSpinner.setEnabled(!mRunning);
                 getView().findViewById(R.id.btn_refresh).setEnabled(!mRunning);
+                mStartButton.setText(mRunning? R.string.btn_stop: R.string.btn_start);
             }
         }
     }
@@ -508,7 +537,7 @@ public class TrackerFragment extends Fragment {
                 setMapMarkersFrom(result);
 
                 if (mRunning) {
-                    mHandler.postDelayed(mPingGroup, PING_INTERVAL);
+                    mHandler.postDelayed(mPingGroup, mPingInterval);
                 }
             }
 
@@ -516,6 +545,7 @@ public class TrackerFragment extends Fragment {
             public void error(Throwable error) {
                 Log.e(TAG, error.getMessage(), error);
                 showError(error);
+                stopPinging();
             }
         });
     }
@@ -533,22 +563,31 @@ public class TrackerFragment extends Fragment {
     void setMapMarkersFrom(Map<String, UserLocation> map) {
 
         // Users that were here last time
-        final Set<String> staleUsers = new HashSet<String>(mMarkers.keySet());
+        final Set<String> usersWhoLeft = new HashSet<String>(mMarkers.keySet());
 
         // Users that haven't updated in a long time
         final Set<String> deadUsers = new HashSet<String>();
 
         final long now = SystemClock.elapsedRealtime();
+        long totalDiff = 0;
 
         for(String user : map.keySet()) {
             final UserLocation location = map.get(user);
             Log.v(TAG, "setMarkers: user=" + user + " location=" + location);
 
-            UserLocation last = mLastUserLocations.get(user);
-            if(last != null) {
-                if(last.equals(location)) {
-                    Log.v(TAG, user + " is stale... stopped reporting");
+            StaleLocation stale = mStaleLocations.get(user);
+
+            if(stale != null) {
+                long diff = location.getTime() - stale.location.getTime();
+                totalDiff += diff;
+                Log.v(TAG, "diff=" + diff + " totalDiff=" + totalDiff);
+
+                stale.checkAndRemember(location);
+
+                if(stale.isStale()) {
+                    Log.v(TAG, String.format("%s hasn't reported in %d cycles. Must be dead", user, stale.getStaleCount()));
                     deadUsers.add(user);
+                    mStaleLocations.remove(user);
 
                     if(isFollowedUser(user)) {
                         warnFollowedUserHasDied(user);
@@ -557,8 +596,9 @@ public class TrackerFragment extends Fragment {
                     continue;
                 }
             }
-
-            mLastUserLocations.put(user, location);
+            else {
+                mStaleLocations.put(user, stale = new StaleLocation(location));
+            }
 
             final LatLng position = new LatLng(location.getLat(), location.getLng());
             final String snippet = String.format(
@@ -567,35 +607,47 @@ public class TrackerFragment extends Fragment {
             Marker marker = mMarkers.get(user);
 
             if(marker != null) {
-                Log.v(TAG, "Move " + user + " to " + position);
                 marker.setPosition(position);
                 marker.setSnippet(snippet);
             }
             else {
-                Log.v(TAG, user + " appeared at " + position);
-
                 marker = mMap.addMarker(
                     new MarkerOptions()
                             .position(position)
                             .title(user)
                             .snippet(snippet)
                             .icon(BitmapDescriptorFactory.defaultMarker(nextMarkerHue()))
-                            .alpha(0.5f)
+                            .alpha(0.7f)
                             .draggable(false)
                 );
 
                 mMarkers.put(user, marker);
             }
 
-            staleUsers.remove(user);
+            usersWhoLeft.remove(user);
 
             if(isFollowedUser(user)) {
                 sendFollowedUserLocation(location);
             }
         }
 
+        if(!map.isEmpty()) {
+            long avgDiff = (totalDiff / map.size());
+            Log.v(TAG, "avgDiff=" + avgDiff);
+
+            long interval = (avgDiff < 1000)?
+                    Math.max(avgDiff, 500): DEF_PING_INTERVAL;
+
+            mPingInterval = interval;
+            Log.v(TAG, "mPingInterval=" + mPingInterval);
+        }
+        else {
+            mPingInterval = SLOW_PING_INTERVAL;
+            Log.v(TAG, "mPingInterval=" + mPingInterval);
+        }
+
         // Remove markers for users that aren't reporting anymore
-        for(String user: staleUsers) {
+        for(String user: usersWhoLeft) {
             Marker marker = mMarkers.get(user);
             if(marker != null) {
                 marker.remove();

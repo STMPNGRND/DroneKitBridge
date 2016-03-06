@@ -28,6 +28,9 @@ public class LocationAwareness {
 
     public static final int PERMISSION_REQUEST_LOCATION = 10;
 
+    public static final long LOCATION_INTERVAL = 1000;
+    public static final float LOCATION_DISTANCE = 1f;
+
     private static LocationAwareness sInstance;
 
     public static void init(Context context) {
@@ -144,7 +147,7 @@ public class LocationAwareness {
 
     void doStartLocationUpdates() {
         try {
-            mLocationManager.requestLocationUpdates(mProviderType, 1000, 1f, mLocationListener);
+            mLocationManager.requestLocationUpdates(mProviderType, LOCATION_INTERVAL, LOCATION_DISTANCE, mLocationListener);
         }
         catch(SecurityException ex) {
             Log.e(TAG, ex.getMessage(), ex);

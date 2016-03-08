@@ -57,7 +57,9 @@ public class MainActivity extends AppCompatActivity
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
-        setMainFragment(mFragMap.get(DKBridgePrefs.get().getLastFragment()));
+        if(savedInstanceState == null) {
+            setMainFragment(mFragMap.get(DKBridgePrefs.get().getLastFragment()));
+        }
     }
 
     @Override

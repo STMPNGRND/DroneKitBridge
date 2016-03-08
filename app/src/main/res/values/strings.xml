@@ -44,9 +44,7 @@
     <!-- ClientFragment -->
     <string name="title_fragment_client">Relay Client</string>
     <string name="summary_fragment_client">Use this to send messages to a <b>server</b> device running this application on the same network.
-    Click <b>Send drone locations from Tower</b> to receive them from Tower and send them to the other device. (This is useful
-        if you want a drone controlled by Tower on the other device to follow the one controlled by Tower on <i>this</i> device.)
-    Click <b>Send my locations</b> to send <i>your</i> location to the other device.</string>
+    Click <b>Send drone locations from Tower</b> to receive them from Tower and send them to the other device.</string>
     <string name="toast_client_connect_failed">Connection to server failed.</string>
     <string name="lbl_location_options">Locations:</string>
     <string name="rdo_drone_location">Send drone locations from Tower</string>
@@ -54,9 +52,7 @@
 
     <!-- RemoteTrackFragment -->
     <string name="title_fragment_remote_track">Remote Target</string>
-    <string name="summary_fragment_remote_track">Use this to let the drone track your location as you move around.
-        Your location will be sent to a server. The <b>Track Targets</b> mode of the app on the device running
-        Tower will retrieve them and send them to Tower and to the drone, which will follow you.\n\n
+    <string name="summary_fragment_remote_track">Use this to let the drone track your location as you move around.\n\n
     <b>Note:</b> You need to have a good internet connection.</string>
     <string name="lbl_groupId">Group ID:</string>
     <string name="hint_groupId">Any unique group id</string>
@@ -67,11 +63,7 @@
 
     <!-- TrackerFragment -->
     <string name="title_fragment_tracker">Track Targets</string>
-    <string name="summary_fragment_tracker">Use this to track multiple remote targets.
-        Select a group to monitor, and the members of the group will show on the map as they move.
-        To follow a specific target, select it on the map. To stop following a target, click
-    <b>Stop Following</b>. Specify whether to send location messages to Tower on this device,
-    or to send the locations to a <b>Relay Server</b> mode of this app on a different device.</string>
+    <string name="summary_fragment_tracker">Use this to track multiple remote targets.</string>
     <string name="lbl_group">Group:</string>
     <string name="chk_pan_map">Pan to follow targets</string>
     <string name="follow_user_fmt">Following %s</string>
@@ -79,7 +71,7 @@
     <string name="btn_stop_following_user">Stop following</string>
     <string name="lbl_send_type">Relay type:</string>
     <string name="rdo_broadcast">Broadcast to Tower</string>
-    <string name="rdo_socket">Send to Relay Server</string>
+    <string name="rdo_socket">Relay Server</string>
     <string name="hint_ip_addr">IP Address</string>
     <string name="hint_port">Port</string>
     <string name="port_default">8888</string>

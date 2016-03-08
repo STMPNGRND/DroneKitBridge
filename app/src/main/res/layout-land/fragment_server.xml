@@ -5,7 +5,6 @@
                 style="@style/MainFragment"
                 tools:context="com.fognl.dronekitbridge.fragments.ServerFragment"
     >
-
     <TextView
         android:id="@+id/text_title"
         android:layout_width="match_parent"
@@ -40,7 +39,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/lbl_ip_addr"
-                style="@style/Text.Prompt.MinWidth"
+                style="@style/Text.Prompt"
                 />
 
             <TextView
@@ -50,25 +49,12 @@
                 style="@style/Text.Data"
                 />
 
-            <Button
-                android:id="@+id/btn_copy"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/btn_copy"
-                style="@style/Button.NoBorder"
-                />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            >
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginLeft="@dimen/padding_small"
                 android:text="@string/lbl_port"
-                style="@style/Text.Prompt.MinWidth"
+                style="@style/Text.Prompt"
                 />
 
             <EditText
@@ -80,6 +66,15 @@
                 android:maxLength="4"
                 style="@style/Text.Data"
                 />
+
+            <Button
+                android:id="@+id/btn_copy"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="right"
+                android:text="@string/btn_copy"
+                style="@style/Button.NoBorder"
+                />
         </LinearLayout>
 
         <LinearLayout
@@ -89,10 +84,18 @@
             >
             <CheckBox
                 android:id="@+id/chk_relay_locations"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/chk_relay_locations"
+                />
+
+            <CheckBox
+                android:id="@+id/chk_log"
                 android:layout_width="0dip"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/chk_relay_locations"
+                android:layout_marginLeft="@dimen/padding_small"
+                android:text="@string/chk_log_incoming"
                 />
 
             <Button
@@ -110,12 +113,6 @@
         android:layout_below="@id/layout_fields"
         android:orientation="vertical"
         >
-        <CheckBox
-            android:id="@+id/chk_log"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/chk_log_incoming"
-            />
         <ScrollView
             android:id="@+id/scrollview"
             android:layout_width="match_parent"

@@ -124,6 +124,12 @@ public class RemoteTargetFragment extends Fragment {
     }
 
     @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setRetainInstance(true);
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_remote_track, container, false);
@@ -147,6 +153,8 @@ public class RemoteTargetFragment extends Fragment {
 
         mGroupText.setText(DKBridgePrefs.get().getLastGroupId());
         mUserText.setText(DKBridgePrefs.get().getLastUserId());
+
+        setButtonStates();
     }
 
     @Override
@@ -172,6 +180,7 @@ public class RemoteTargetFragment extends Fragment {
         }
 
         mButton.setEnabled(enabled);
+        mButton.setText(mRunning? R.string.btn_stop: R.string.btn_start);
     }
 
     void log(String text) {
@@ -183,7 +192,6 @@ public class RemoteTargetFragment extends Fragment {
             if(mRunning) {
                 // Stop listening for locations
                 LocationAwareness.get().stopLocationUpdates();
-                mButton.setText(R.string.btn_start);
                 mStatusText.setText("");
                 mHandler.removeCallbacks(mSendLocation);
                 mCurrentLocation = null;
@@ -209,6 +217,8 @@ public class RemoteTargetFragment extends Fragment {
             }
 
             mRunning = running;
+
+            setButtonStates();
         }
     }
 

@@ -90,7 +90,7 @@ public class ClientFragment extends Fragment {
 
         @Override
         public void onConnectFailed(Throwable error) {
-            Toast.makeText(getActivity(), R.string.toast_client_connect_failed, Toast.LENGTH_SHORT).show();
+            Toast.makeText(DKBridgeApp.get(), R.string.toast_client_connect_failed, Toast.LENGTH_SHORT).show();
             disconnectClient();
         }
 
@@ -173,6 +173,12 @@ public class ClientFragment extends Fragment {
     }
 
     @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setRetainInstance(true);
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_client, container, false);
@@ -210,6 +216,8 @@ public class ClientFragment extends Fragment {
                 mLoggingOutput = isChecked;
             }
         });
+
+        setButtonStates();
     }
 
     @Override
@@ -256,7 +264,8 @@ public class ClientFragment extends Fragment {
 
     void onSendClick(View v) {
         // Test sending a target location
-        getActivity().sendBroadcast(LocationRelay.makeDroneLocationEvent());
+//        getActivity().sendBroadcast(LocationRelay.makeDroneLocationEvent());
+        sendData("Hey there");
     }
 
     void sendData(String data) {
@@ -280,6 +289,9 @@ public class ClientFragment extends Fragment {
         }
 
         mConnectButton.setEnabled(enabled);
+
+        mConnectButton.setText((mClient != null)? R.string.btn_disconnect: R.string.btn_connect);
+        mSendButton.setEnabled(mClient != null);
     }
 
     void connectClient() {

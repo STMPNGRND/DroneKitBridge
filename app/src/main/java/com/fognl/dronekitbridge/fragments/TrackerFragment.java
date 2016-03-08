@@ -16,6 +16,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -25,6 +27,7 @@ import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
+import android.widget.SpinnerAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -49,6 +52,7 @@ import com.google.android.gms.maps.model.MarkerOptions;
 
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -62,9 +66,23 @@ import retrofit2.Response;
 public class TrackerFragment extends Fragment {
     static final String TAG = TrackerFragment.class.getSimpleName();
 
+    private static final String
+        STATE_RUNNING = "running"
+    ,   STATE_SELECTED_GROUP = "selected_group"
+    ,   STATE_SELECTED_USER = "selected_user"
+    ,   STATE_GROUP_LIST = "group_list"
+    ,   STATE_MAP_CENTER = "center_ll"
+    ,   STATE_MAP_ZOOM = "map_zoom"
+    ;
+
     enum RelayType {
         None, Broadcast, Socket
     };
+
+    static class MapState {
+        LatLng center;
+        float zoom;
+    }
 
     static class StaleLocation {
         UserLocation location;
@@ -93,6 +111,7 @@ public class TrackerFragment extends Fragment {
         int getStaleCount() { return staleCount; }
     }
 
+    private static final int MAP_PADDING = 200;
     private static final long DEF_PING_INTERVAL = 1000;
     private static final long SLOW_PING_INTERVAL = 5000;
 
@@ -130,6 +149,11 @@ public class TrackerFragment extends Fragment {
 
                 case R.id.btn_connect: {
                     onConnectClick(v);
+                    break;
+                }
+
+                case R.id.layout_top: {
+                    onTitleAreaClick(v);
                     break;
                 }
             }
@@ -197,6 +221,8 @@ public class TrackerFragment extends Fragment {
     private Button mStartButton;
     private Button mStopFollowingUserButton;
     private TextView mStatusText;
+    private View mFieldsLayout;
+    private View mBottomBar;
 
     // connection panel
     private View mConnectionPanel;
@@ -214,6 +240,10 @@ public class TrackerFragment extends Fragment {
     private SocketClient mClient;
     private Thread mClientThread;
     private long mPingInterval = DEF_PING_INTERVAL;
+    private Animation mInTop, mInBottom;
+    private Animation mOutTop, mOutBottom;
+
+    private MapState mSavedMapState;
 
     private final HashMap<String, Marker> mMarkers = new HashMap<String, Marker>();
     private final HashMap<String, StaleLocation> mStaleLocations = new HashMap<String, StaleLocation>();
@@ -223,14 +253,28 @@ public class TrackerFragment extends Fragment {
     }
 
     @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setRetainInstance(true);
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_tracker, container, false);
     }
 
     @Override
-    public void onViewCreated(View view, Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
+    public void onViewCreated(View view, Bundle state) {
+        super.onViewCreated(view, state);
+
+        mInBottom = AnimationUtils.loadAnimation(getContext(), R.anim.in_bottom);
+        mOutBottom = AnimationUtils.loadAnimation(getContext(), R.anim.out_bottom);
+        mInTop = AnimationUtils.loadAnimation(getContext(), R.anim.in_top);
+        mOutTop = AnimationUtils.loadAnimation(getContext(), R.anim.out_top);
+
+        mFieldsLayout = view.findViewById(R.id.layout_fields);
+        mBottomBar = view.findViewById(R.id.bottombar);
 
         mStatusText = (TextView)view.findViewById(R.id.text_status);
 
@@ -242,6 +286,7 @@ public class TrackerFragment extends Fragment {
         mStopFollowingUserButton.setVisibility(View.GONE);
 
         view.findViewById(R.id.btn_refresh).setOnClickListener(mClickListener);
+        view.findViewById(R.id.layout_top).setOnClickListener(mClickListener);
 
         ((CheckBox)view.findViewById(R.id.chk_pan_map)).setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -255,10 +300,28 @@ public class TrackerFragment extends Fragment {
         initGroupSpinner(view);
         initMap(view);
         initRelayTypes(view);
-
         setDefaults(view);
 
-        retrieveGroups();
+        if(state != null) {
+            mRunning = state.getBoolean(STATE_RUNNING);
+            mSelectedGroup = state.getString(STATE_SELECTED_GROUP);
+            mSelectedUser = state.getString(STATE_SELECTED_USER);
+
+            mSavedMapState = new MapState();
+            mSavedMapState.center = state.getParcelable(STATE_MAP_CENTER);
+            mSavedMapState.zoom = state.getFloat(STATE_MAP_ZOOM);
+
+            fillAdapterWith(state.getStringArrayList(STATE_GROUP_LIST));
+
+            if(mSelectedGroup != null && mRunning) {
+                startPinging(mSelectedGroup);
+            }
+        }
+        else {
+            retrieveGroups();
+        }
+
+        setButtonStates();
     }
 
     @Override
@@ -270,6 +333,33 @@ public class TrackerFragment extends Fragment {
         if(mClient != null) {
             disconnectClient();
         }
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        final ArrayList<String> groups = getGroupsFromSpinner();
+
+        outState.putBoolean(STATE_RUNNING, mRunning);
+        outState.putString(STATE_SELECTED_GROUP, mSelectedGroup);
+        outState.putString(STATE_SELECTED_USER, mSelectedUser);
+        outState.putStringArrayList(STATE_GROUP_LIST, groups);
+        outState.putParcelable(STATE_MAP_CENTER, mMap.getCameraPosition().target);
+        outState.putFloat(STATE_MAP_ZOOM, mMap.getCameraPosition().zoom);
+    }
+
+    ArrayList<String> getGroupsFromSpinner() {
+        final ArrayList<String> list = new ArrayList<String>();
+
+        final SpinnerAdapter adapter = mGroupsSpinner.getAdapter();
+        final int size = adapter.getCount();
+
+        for(int i = 0; i < size; ++i) {
+            list.add((String)adapter.getItem(i));
+        }
+
+        return list;
     }
 
     void onRefreshClick(View v) {
@@ -293,6 +383,19 @@ public class TrackerFragment extends Fragment {
         } else {
             connectClient();
         }
+    }
+
+    void onTitleAreaClick(View v) {
+        final int viz = (mFieldsLayout.isShown())? View.GONE: View.VISIBLE;
+
+        Animation bottom = (viz == View.VISIBLE)? mInBottom: mOutBottom;
+        Animation top = (viz == View.VISIBLE)? mInTop: mOutTop;
+
+        mFieldsLayout.startAnimation(top);
+        mFieldsLayout.setVisibility(viz);
+
+        mBottomBar.startAnimation(bottom);
+        mBottomBar.setVisibility(viz);
     }
 
     void followGroup(String group) {
@@ -372,6 +475,7 @@ public class TrackerFragment extends Fragment {
         mHandler.removeCallbacks(mPingGroup);
         mRunning = false;
         stopFollowingUser();
+        clearMapMarkers();
         setButtonStates();
     }
 
@@ -392,7 +496,24 @@ public class TrackerFragment extends Fragment {
     }
 
     void fillAdapterWith(List<String> list) {
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(DKBridgeApp.get(), android.R.layout.simple_spinner_item, android.R.id.text1, list);
+        final Context context = DKBridgeApp.get();
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(context, android.R.layout.simple_spinner_item, android.R.id.text1, list) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                View v = super.getView(position, convertView, parent);
+                ((TextView)v).setTextColor(context.getResources().getColor(R.color.text_combo_top));
+                return v;
+            }
+
+            @Override
+            public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                View v = super.getDropDownView(position, convertView, parent);
+                ((TextView)v).setTextColor(context.getResources().getColor(R.color.text_combo));
+                return v;
+            }
+        };
+
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         mGroupsSpinner.setAdapter(adapter);
     }
@@ -405,6 +526,7 @@ public class TrackerFragment extends Fragment {
                 mGroupsSpinner.setEnabled(!mRunning);
                 getView().findViewById(R.id.btn_refresh).setEnabled(!mRunning);
                 mStartButton.setText(mRunning? R.string.btn_stop: R.string.btn_start);
+                mConnectButton.setText((mClient != null)? R.string.btn_disconnect: R.string.btn_connect);
             }
         }
     }
@@ -432,9 +554,37 @@ public class TrackerFragment extends Fragment {
                 mMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
                 mMap.getUiSettings().setMapToolbarEnabled(false);
                 mMap.setOnMarkerClickListener(mMarkerClickListener);
+
+                if (mSavedMapState != null) {
+                    reloadMapMarkers();
+                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mSavedMapState.center, mSavedMapState.zoom));
+
+                    mSavedMapState = null;
+                }
+
                 setMyLocation();
             }
         });
+    }
+
+    void reloadMapMarkers() {
+        final HashMap<String, Marker> map = new HashMap<String, Marker>(mMarkers);
+
+        for(String key: map.keySet()) {
+            Marker m = map.get(key);
+
+            Marker marker = mMap.addMarker(
+                    new MarkerOptions()
+                            .position(m.getPosition())
+                            .title(key)
+                            .snippet(m.getSnippet())
+                            .icon(BitmapDescriptorFactory.defaultMarker(nextMarkerHue()))
+                            .alpha(0.7f)
+                            .draggable(false)
+            );
+
+            mMarkers.put(key, marker);
+        }
     }
 
     void setDefaults(View view) {
@@ -707,8 +857,7 @@ public class TrackerFragment extends Fragment {
 
             LatLngBounds bounds = b.build();
 
-            final int padding = 200;
-            mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding));
+            mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, MAP_PADDING));
         }
     }
 

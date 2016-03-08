@@ -32,6 +32,9 @@ import com.fognl.dronekitbridge.locationrelay.LocationRelay;
 public class ServerFragment extends Fragment {
     static final String TAG = ServerFragment.class.getSimpleName();
 
+    private static final String STATE_LOG = "log";
+    private static final String STATE_RELAY_LOCATIONS = "relay";
+
     public interface OnFragmentInteractionListener {
         // TODO: Update argument type and name
         void onFragmentInteraction(Uri uri);
@@ -67,12 +70,12 @@ public class ServerFragment extends Fragment {
     private final SocketServer.Listener mServerListener = new SocketServer.Listener() {
         @Override
         public void onStarted() {
-            mButton.setText(R.string.btn_stop_listening);
+            setButtonStates();
         }
 
         @Override
         public void onStopped() {
-            mButton.setText(R.string.btn_listen);
+            setButtonStates();
         }
 
         @Override
@@ -127,18 +130,31 @@ public class ServerFragment extends Fragment {
     private boolean mLogIncomingData;
     private boolean mRelayLocations;
 
+    private String m = null;
+
     public ServerFragment() {
         super();
     }
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    public void onCreate(Bundle state) {
+        Log.v(TAG, "onCreate(): state=" + state);
+        super.onCreate(state);
+        setRetainInstance(true);
 
-//        if (getArguments() != null) {
-//            mParam1 = getArguments().getString(ARG_PARAM1);
-//            mParam2 = getArguments().getString(ARG_PARAM2);
-//        }
+        if(state != null) {
+            mLogIncomingData = state.getBoolean(STATE_LOG);
+            mRelayLocations = state.getBoolean(STATE_RELAY_LOCATIONS);
+        }
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        Log.v(TAG, "onSaveInstanceState()");
+        super.onSaveInstanceState(outState);
+
+        outState.putBoolean(STATE_LOG, mLogIncomingData);
+        outState.putBoolean(STATE_RELAY_LOCATIONS, mRelayLocations);
     }
 
     @Override
@@ -150,6 +166,8 @@ public class ServerFragment extends Fragment {
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
+        Log.v(TAG, "onViewCreated(): state=" + savedInstanceState);
 
         mIpAddrText = (TextView)view.findViewById(R.id.text_ip_addr);
 
@@ -166,12 +184,17 @@ public class ServerFragment extends Fragment {
 
         mPortEditText.setText(String.valueOf(SocketServer.DEFAULT_PORT));
 
-        ((CheckBox)view.findViewById(R.id.chk_log)).setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+        CheckBox cb = (CheckBox)view.findViewById(R.id.chk_log);
+        cb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 mLogIncomingData = isChecked;
             }
         });
+
+        cb.setChecked(mLogIncomingData);
+
+
 
         ((CheckBox)view.findViewById(R.id.chk_relay_locations)).setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -269,7 +292,8 @@ public class ServerFragment extends Fragment {
             enabled = false;
         }
 
-        getView().findViewById(R.id.btn_listen).setEnabled(enabled);
+        mButton.setEnabled(enabled);
+        mButton.setText((mServer != null) ? R.string.btn_stop_listening: R.string.btn_listen);
     }
 
     void showError(Throwable error) {

@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">DroneKit Bridge</string>
+    <string name="app_version">1.0</string>
 
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
@@ -28,8 +29,9 @@
     <string name="btn_stop">Stop</string>
 
     <!-- ServerFragment -->
-    <string name="title_fragment_server">Server</string>
-    <string name="summary_fragment_server">Use this to receive messages from a <b>client</b> device running this application on the same network.</string>
+    <string name="title_fragment_server">Relay Server</string>
+    <string name="summary_fragment_server">Use this to receive messages from a <b>client</b> device running this application on the same network.
+    You can then echo the location messages to <b>Tower</b> or another app running on the same device to direct a drone to those locations.</string>
     <string name="toast_server_stopped">Server Stopped</string>
     <string name="toast_client_connected">Client connected</string>
     <string name="toast_client_disconnected">Client disconnected</string>
@@ -37,19 +39,25 @@
     <string name="chk_log_output">Log output</string>
     <string name="chk_relay_locations">Relay target locations</string>
     <string name="ip_addr_port">IP Address and port</string>
+    <string name="toast_copied">Copied to clipboard</string>
 
     <!-- ClientFragment -->
-    <string name="title_fragment_client">Client</string>
-    <string name="summary_fragment_client">Use this to send messages to a <b>server</b> device running this application on the same network.</string>
+    <string name="title_fragment_client">Relay Client</string>
+    <string name="summary_fragment_client">Use this to send messages to a <b>server</b> device running this application on the same network.
+    Click <b>Send drone locations from Tower</b> to receive them from Tower and send them to the other device. (This is useful
+        if you want a drone controlled by Tower on the other device to follow the one controlled by Tower on <i>this</i> device.)
+    Click <b>Send my locations</b> to send <i>your</i> location to the other device.</string>
     <string name="toast_client_connect_failed">Connection to server failed.</string>
-
     <string name="lbl_location_options">Locations:</string>
     <string name="rdo_drone_location">Send drone locations from Tower</string>
     <string name="rdo_my_location">Send my locations</string>
 
     <!-- RemoteTrackFragment -->
-    <string name="title_fragment_remote_track">Remote Tracking</string>
-    <string name="summary_fragment_remote_track">Use this to let the drone track your location as you move around.</string>
+    <string name="title_fragment_remote_track">Remote Target</string>
+    <string name="summary_fragment_remote_track">Use this to let the drone track your location as you move around.
+        Your location will be sent to a server. The <b>Track Targets</b> mode of the app on the device running
+        Tower will retrieve them and send them to Tower and to the drone, which will follow you.\n\n
+    <b>Note:</b> You need to have a good internet connection.</string>
     <string name="lbl_groupId">Group ID:</string>
     <string name="hint_groupId">Any unique group id</string>
     <string name="lbl_userId">User ID:</string>
@@ -59,7 +67,11 @@
 
     <!-- TrackerFragment -->
     <string name="title_fragment_tracker">Track Targets</string>
-    <string name="summary_fragment_tracker">Use this to track multiple remote targets. Select a group to monitor, and the members of the group will show on the map as they move. To follow a specific target, select it.</string>
+    <string name="summary_fragment_tracker">Use this to track multiple remote targets.
+        Select a group to monitor, and the members of the group will show on the map as they move.
+        To follow a specific target, select it on the map. To stop following a target, click
+    <b>Stop Following</b>. Specify whether to send location messages to Tower on this device,
+    or to send the locations to a <b>Relay Server</b> mode of this app on a different device.</string>
     <string name="lbl_group">Group:</string>
     <string name="chk_pan_map">Pan to follow targets</string>
     <string name="follow_user_fmt">Following %s</string>

@@ -63,6 +63,7 @@
     </style>
 
     <style name="Button.NoBorder">
+        <item name="android:textColor">@color/colorPrimary</item>
         <item name="android:background">@null</item>
     </style>
 

@@ -40,7 +40,6 @@ public class LocationRelay {
     ,   EXTRA_TIME = "time"
     ,   EXTRA_ACCURACY = "accuracy"
     ,   EXTRA_SPEED = "speed"
-    ,   EXTRA_LOCATION = "location"
     ;
 
     public static void init(Context context) {
@@ -79,7 +78,7 @@ public class LocationRelay {
             if(jo.has(EXTRA_LAT)) intent.putExtra(EXTRA_LAT, jo.getDouble(EXTRA_LAT));
             if(jo.has(EXTRA_LNG)) intent.putExtra(EXTRA_LNG, jo.getDouble(EXTRA_LNG));
             if(jo.has(EXTRA_ALTITUDE)) intent.putExtra(EXTRA_ALTITUDE, jo.getDouble(EXTRA_ALTITUDE));
-            if(jo.has(EXTRA_ACCURACY)) intent.putExtra(EXTRA_ACCURACY, jo.getInt(EXTRA_ACCURACY));
+            if(jo.has(EXTRA_ACCURACY)) intent.putExtra(EXTRA_ACCURACY, (float)jo.getDouble(EXTRA_ACCURACY));
             if(jo.has(EXTRA_HEADING)) intent.putExtra(EXTRA_HEADING, (float)jo.getDouble(EXTRA_HEADING));
             if(jo.has(EXTRA_SPEED)) intent.putExtra(EXTRA_SPEED, (float)jo.getDouble(EXTRA_SPEED));
             if(jo.has(EXTRA_TIME)) intent.putExtra(EXTRA_TIME, jo.getLong(EXTRA_TIME));

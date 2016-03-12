@@ -1,15 +1,14 @@
 package com.fognl.dronekitbridge.fragments;
 
 import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.text.Editable;
-import android.text.TextUtils;
-import android.text.TextWatcher;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -18,7 +17,6 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
-import android.widget.EditText;
 import android.widget.RadioGroup;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -26,18 +24,22 @@ import android.widget.Toast;
 
 import com.fognl.dronekitbridge.DKBridgeApp;
 import com.fognl.dronekitbridge.DKBridgePrefs;
+import com.fognl.dronekitbridge.DeviceListActivity;
 import com.fognl.dronekitbridge.R;
-import com.fognl.dronekitbridge.comm.SocketClient;
+import com.fognl.dronekitbridge.comm.BluetoothService;
 import com.fognl.dronekitbridge.location.LocationAwareness;
 import com.fognl.dronekitbridge.locationrelay.LocationRelay;
 
 import org.json.JSONObject;
 
-public class ClientFragment extends Fragment {
-    static final String TAG = ClientFragment.class.getSimpleName();
+public class BluetoothClientFragment extends Fragment {
+    static final String TAG = BluetoothClientFragment.class.getSimpleName();
+
+    private static final int REQUEST_ENABLE_BT = 1001;
+    private static final int REQUEST_CONNECT_DEVICE = 2001;
 
     static String formatForLog(Location loc) {
-        return String.format("Location: %.3f/%.3f, speed=%.2f heading=%.2f", loc.getLatitude(), loc.getLongitude(), loc.getSpeed(), loc.getBearing());
+        return String.format("Location: %.3f/%.3f, speed=%.2f heading=%.2f acc=%.1f", loc.getLatitude(), loc.getLongitude(), loc.getSpeed(), loc.getBearing(), loc.getAccuracy());
     }
 
     private final View.OnClickListener mClickListener = new View.OnClickListener() {
@@ -65,46 +67,11 @@ public class ClientFragment extends Fragment {
         }
     };
 
-    private final TextWatcher mWatcher = new TextWatcher() {
-        public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
-        public void onTextChanged(CharSequence s, int start, int before, int count) { }
-
-        @Override
-        public void afterTextChanged(Editable s) {
-            setButtonStates();
-        }
-    };
-
-    private final SocketClient.Listener mClientListener = new SocketClient.Listener() {
-        @Override
-        public void onConnected() {
-            mConnectButton.setText(R.string.btn_disconnect);
-            mSendButton.setEnabled(true);
-        }
-
-        @Override
-        public void onConnectFailed(Throwable error) {
-            Toast.makeText(DKBridgeApp.get(), R.string.toast_client_connect_failed, Toast.LENGTH_SHORT).show();
-            disconnectClient();
-        }
-
-        @Override
-        public void onDisconnected() {
-            mConnectButton.setText(R.string.btn_connect);
-            mSendButton.setEnabled(false);
-        }
-
-        @Override
-        public void onError(Throwable error) {
-            showError(error);
-        }
-    };
-
     private final LocationRelay.DroneLocationListener mDroneLocationListener = new LocationRelay.DroneLocationListener() {
         @Override
         public void onDroneLocationUpdated(String msg) {
-            if(mClient != null && mClient.isConnected()) {
-                mClient.send(msg);
+            if(mConnected) {
+                sendData(msg);
             }
         }
     };
@@ -117,7 +84,7 @@ public class ClientFragment extends Fragment {
                 addLog(formatForLog(location));
             }
 
-            // Got an Android location. Conver to an Intent
+            // Got an Android location. Convert to an Intent
             final Intent intent = LocationRelay.toIntent(LocationRelay.EVT_TARGET_LOCATION_UPDATED, location);
 
             if(intent != null) {
@@ -141,20 +108,62 @@ public class ClientFragment extends Fragment {
         }
     };
 
-    private EditText mIpEditText;
-    private EditText mPortEditText;
+    private final BluetoothService.Listener mBtListener = new BluetoothService.Listener() {
+        @Override
+        public void onConnecting() {
+            addLog(getString(R.string.status_connecting));
+        }
+
+        @Override
+        public void onConnected() {
+            addLog(getString(R.string.status_connected));
+            mConnected = true;
+            setButtonStates();
+        }
+
+        @Override
+        public void onConnectionFailed() {
+            mConnected = false;
+            showError(new Exception(getString(R.string.toast_bt_connect_failed)));
+            setButtonStates();
+        }
+
+        @Override
+        public void onConnectionLost() {
+            mConnected = false;
+            showError(new Exception(getString(R.string.toast_bt_connection_lost)));
+            setButtonStates();
+        }
+
+        @Override
+        public void onStopped() {
+            mConnected = false;
+            setButtonStates();
+        }
+
+        @Override
+        public void onWrite(byte[] data) {
+            addLog(new String(data));
+        }
+
+        @Override
+        public void onRead(byte[] data) {
+            addLog(new String(data));
+        }
+    };
+
     private TextView mLogText;
     private ScrollView mLogScroll;
     private Button mConnectButton;
     private Button mSendButton;
 
-    private SocketClient mClient;
-    private Thread mClientThread;
     private boolean mListeningForDroneEvents;
     private boolean mListeningForMyLocations;
     private boolean mLoggingOutput;
+    private boolean mConnected;
+    private BluetoothService mBtService;
 
-    public ClientFragment() {
+    public BluetoothClientFragment() {
         super();
     }
 
@@ -162,37 +171,31 @@ public class ClientFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
+
+        if(!BluetoothService.isBluetoothAvailable()) {
+            Toast.makeText(getActivity(), R.string.toast_bt_not_available, Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_client, container, false);
+        return inflater.inflate(R.layout.fragment_bt_client, container, false);
     }
 
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        mIpEditText = (EditText)view.findViewById(R.id.edit_ip_addr);
-        mPortEditText = (EditText)view.findViewById(R.id.edit_port);
-
         mLogText = (TextView)view.findViewById(R.id.text_log);
         mLogText.setMovementMethod(new ScrollingMovementMethod());
         mLogScroll = (ScrollView)view.findViewById(R.id.scrollview);
-
-        mIpEditText.addTextChangedListener(mWatcher);
-        mPortEditText.addTextChangedListener(mWatcher);
 
         mConnectButton = (Button)view.findViewById(R.id.btn_connect);
         mSendButton = (Button)view.findViewById(R.id.btn_send);
 
         mConnectButton.setOnClickListener(mClickListener);
         mSendButton.setOnClickListener(mClickListener);
-
-        DKBridgePrefs prefs = DKBridgePrefs.get();
-        mIpEditText.setText(prefs.getLastServerIp());
-        mPortEditText.setText(prefs.getLastServerPort());
 
         initLocationOptions(view);
 
@@ -210,10 +213,23 @@ public class ClientFragment extends Fragment {
     }
 
     @Override
+    public void onStart() {
+        super.onStart();
+
+        if(BluetoothService.isBluetoothEnabled()) {
+            setupService();
+        }
+        else {
+            Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+        }
+    }
+
+    @Override
     public void onDestroy() {
         super.onDestroy();
 
-        if(mClient != null) {
+        if(mConnected) {
             disconnectClient();
         }
 
@@ -226,8 +242,42 @@ public class ClientFragment extends Fragment {
         }
     }
 
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        switch(requestCode) {
+            case REQUEST_ENABLE_BT: {
+                switch(resultCode) {
+                    case Activity.RESULT_OK: {
+                        setupService();
+                        break;
+                    }
+
+                    case Activity.RESULT_CANCELED: {
+                        Toast.makeText(getActivity(), R.string.toast_bt_not_enabled, Toast.LENGTH_SHORT).show();
+                        break;
+                    }
+                }
+
+                break;
+            }
+
+            case REQUEST_CONNECT_DEVICE: {
+                switch(resultCode) {
+                    case Activity.RESULT_OK: {
+                        connectDevice(data, false);
+                        break;
+                    }
+                }
+            }
+
+            default: {
+                super.onActivityResult(requestCode, resultCode, data);
+            }
+        }
+    }
+
     void onConnectClick(View v) {
-        if(mClient != null) {
+        if(mConnected) {
             disconnectClient();
         } else {
             connectClient();
@@ -241,58 +291,30 @@ public class ClientFragment extends Fragment {
     }
 
     void sendData(String data) {
-        if(mClient != null) {
-            mClient.send(data);
-
-            if(mLoggingOutput) {
-                addLog(data);
-            }
-        }
+        Log.v(TAG, "sendData(): data=" + data);
+        mBtService.write(data.getBytes());
     }
 
     void setButtonStates() {
-        boolean enabled = true;
+        boolean enabled = mConnected;
+        mConnectButton.setText((mConnected)? R.string.btn_disconnect: R.string.btn_connect);
+        mSendButton.setEnabled(enabled);
 
-        for(EditText et: new EditText[] { mIpEditText, mPortEditText }) {
-            if(TextUtils.isEmpty(et.getText().toString())) {
-                enabled = false;
-                break;
-            }
-        }
-
-        mConnectButton.setEnabled(enabled);
-
-        mConnectButton.setText((mClient != null)? R.string.btn_disconnect: R.string.btn_connect);
-        mSendButton.setEnabled(mClient != null);
+        mConnectButton.setEnabled(BluetoothService.isBluetoothEnabled());
     }
 
     void connectClient() {
-        String ip = mIpEditText.getText().toString();
-        int port = Integer.valueOf(mPortEditText.getText().toString());
-
-        mClient = new SocketClient(DKBridgeApp.get().getHandler(), mClientListener, ip, port);
-        mClientThread = new Thread(mClient);
-        mClientThread.start();
-
-        DKBridgePrefs.get().setLastServerIp(ip);
-        DKBridgePrefs.get().setLastServerPort(String.valueOf(port));
+        mLogText.setText("");
+        startActivityForResult(new Intent(getActivity(), DeviceListActivity.class), REQUEST_CONNECT_DEVICE);
     }
 
     void disconnectClient() {
-        if(mClient != null && mClient.isConnected()) {
-            mClient.cancel();
+        if(mBtService != null) {
+            mBtService.stop();
         }
 
-        if(mClientThread != null) {
-            try {
-                mClientThread.join(1000);
-            } catch(InterruptedException ex) {
-                showError(ex);
-            }
-        }
-
-        mClient = null;
-        mClientThread = null;
+        mConnected = false;
+        setButtonStates();
     }
 
     void showError(Throwable error) {
@@ -305,6 +327,12 @@ public class ClientFragment extends Fragment {
     void initLocationOptions(View v) {
         RadioGroup grp = (RadioGroup)v.findViewById(R.id.group_locations);
         grp.setOnCheckedChangeListener(mLocationOptionListener);
+    }
+
+    void setupService() {
+        if(mBtService == null) {
+            mBtService = new BluetoothService(DKBridgeApp.get(), mBtListener);
+        }
     }
 
     void listenForDroneEvents(boolean listen) {
@@ -334,7 +362,28 @@ public class ClientFragment extends Fragment {
     }
 
     void addLog(String str) {
-        mLogText.append(str + "\n");
-        mLogScroll.scrollTo(0, mLogScroll.getBottom());
+        if(mLoggingOutput) {
+            mLogText.append(str + "\n");
+            mLogScroll.scrollTo(0, mLogScroll.getBottom());
+        }
+    }
+
+    /**
+     * Establish connection with other divice
+     *
+     * @param data   An {@link Intent} with {@link DeviceListActivity#EXTRA_DEVICE_ADDRESS} extra.
+     * @param secure Socket Security type - Secure (true) , Insecure (false)
+     */
+    void connectDevice(Intent data, boolean secure) {
+        final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        if(adapter != null && adapter.isEnabled()) {
+            // Get the device MAC address
+            String address = data.getExtras()
+                    .getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
+            // Get the BluetoothDevice object
+            BluetoothDevice device = adapter.getRemoteDevice(address);
+            // Attempt to connect to the device
+            mBtService.connect(device, secure);
+        }
     }
 }

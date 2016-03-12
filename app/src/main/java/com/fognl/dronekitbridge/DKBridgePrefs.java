@@ -22,6 +22,8 @@ public class DKBridgePrefs {
         public static final String FRAG_CLIENT = "client";
         public static final String FRAG_REMOTE = "remote_track";
         public static final String FRAG_TRACKER = "tracker";
+        public static final String FRAG_BT_SERVER = "bt_server";
+        public static final String FRAG_BT_CLIENT = "bt_client";
 
     public static final String PREF_LAST_GROUPID = "last_groupid";
     public static final String PREF_LAST_USERID = "last_userid";
@@ -30,9 +32,13 @@ public class DKBridgePrefs {
     public static final String PREF_TRACKER_RELAY_TYPE = "tracker_relay_type";
         public static final String RELAY_TYPE_BCAST = "bcast";
         public static final String RELAY_TYPE_SOCKET = "socket";
+        public static final String RELAY_TYPE_BT = "bt";
 
     public static final String PREF_LAST_MAP_ZOOM = "last_map_zoom";
     public static final String PREF_LAST_MAP_CENTER = "last_map_center";
+
+    public static final String PREF_RELAY_LOCATIONS = "relay_locations";
+    public static final String PREF_LOG_INCOMING = "log_incoming";
 
     public static void init(Context context) {
         if(sInstance == null) {
@@ -108,6 +114,12 @@ public class DKBridgePrefs {
                 .putString(PREF_LAST_USERID, userId)
             .commit();
     }
+
+    public boolean getRelayLocations() { return getPrefs().getBoolean(PREF_RELAY_LOCATIONS, true); }
+    public void setRelayLocations(boolean relay) { getPrefs().edit().putBoolean(PREF_RELAY_LOCATIONS, relay).commit(); }
+
+    public boolean getLogIncoming() { return getPrefs().getBoolean(PREF_LOG_INCOMING, true); }
+    public void setLogIncoming(boolean log) { getPrefs().edit().putBoolean(PREF_LOG_INCOMING, log).commit(); }
 
     public SharedPreferences getPrefs() {
         return PreferenceManager.getDefaultSharedPreferences(mContext);

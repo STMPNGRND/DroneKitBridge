@@ -1,6 +1,8 @@
 package com.fognl.dronekitbridge.fragments;
 
 import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -32,7 +34,9 @@ import android.widget.Toast;
 
 import com.fognl.dronekitbridge.DKBridgeApp;
 import com.fognl.dronekitbridge.DKBridgePrefs;
+import com.fognl.dronekitbridge.DeviceListActivity;
 import com.fognl.dronekitbridge.R;
+import com.fognl.dronekitbridge.comm.BluetoothService;
 import com.fognl.dronekitbridge.comm.Network;
 import com.fognl.dronekitbridge.comm.SocketClient;
 import com.fognl.dronekitbridge.comm.WebSocketClient;
@@ -74,11 +78,15 @@ public class TrackerFragment extends Fragment {
     ;
 
     private static final int MSG_STALE_TARGET = 1001;
-    private static final long STALE_USER_DELETE_DELAY = 5000;
+    private static final long STALE_USER_DELETE_DELAY = 60000;
     private static final long STALE_USER_MAX_AGE = 30000;
+    private static final long WS_PING_INTERVAL = 15000;
+
+    private static final int REQUEST_ENABLE_BT = 1001;
+    private static final int REQUEST_CONNECT_DEVICE = 2001;
 
     enum RelayType {
-        None, Broadcast, Socket
+        None, Broadcast, Socket, Bluetooth
     };
 
     static class MapState {
@@ -113,6 +121,28 @@ public class TrackerFragment extends Fragment {
             BitmapDescriptorFactory.HUE_ROSE
     };
 
+    private final RadioGroup.OnCheckedChangeListener mConnectionCheckListener = new RadioGroup.OnCheckedChangeListener() {
+        @Override
+        public void onCheckedChanged(RadioGroup group, int checkedId) {
+            switch (checkedId) {
+                case R.id.rdo_broadcast: {
+                    setRelayType(RelayType.Broadcast);
+                    break;
+                }
+
+                case R.id.rdo_socket: {
+                    setRelayType(RelayType.Socket);
+                    break;
+                }
+
+                case R.id.rdo_bt: {
+                    setRelayType(RelayType.Bluetooth);
+                    break;
+                }
+            }
+        }
+    };
+
     private final View.OnClickListener mClickListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -133,11 +163,17 @@ public class TrackerFragment extends Fragment {
                 }
 
                 case R.id.btn_connect: {
-                    onConnectClick(v);
+                    onConnectSocketClick(v);
                     break;
                 }
 
-                case R.id.layout_top: {
+                case R.id.btn_bt_connect: {
+                    onConnectBtClick(v);
+                    break;
+                }
+
+                case R.id.layout_top:
+                case R.id.bottombar: {
                     onTitleAreaClick(v);
                     break;
                 }
@@ -169,8 +205,8 @@ public class TrackerFragment extends Fragment {
 
         @Override
         public void onConnectFailed(Throwable error) {
-            Toast.makeText(getActivity(), R.string.toast_client_connect_failed, Toast.LENGTH_SHORT).show();
-            disconnectClient();
+            say(getString(R.string.toast_client_connect_failed));
+            disconnectSocket();
         }
 
         @Override
@@ -215,6 +251,11 @@ public class TrackerFragment extends Fragment {
         }
 
         @Override
+        public void onFollowedUserLocation(String user, UserLocation location) {
+            sendFollowedUserLocation(location);
+        }
+
+        @Override
         public void onError(Throwable error) {
             showError(error);
         }
@@ -224,27 +265,71 @@ public class TrackerFragment extends Fragment {
         @Override
         public void onConnected() {
             Log.v(TAG, "websocket client connected");
+
+            if(mPendingOperation != null) {
+                mHandler.postDelayed(mPendingOperation, 1000);
+            }
+
+            mHandler.postDelayed(mPingWebSocket, WS_PING_INTERVAL);
         }
 
         @Override
         public void onDisconnected(int code, String reason) {
-            Log.v(TAG, "websocket client disconnected");
+            final String msg = String.format("Disconnected: code=%d reason=%s", code, reason);
+            Log.v(TAG, msg);
+            mRunning = false;
+            setButtonStates();
+            mHandler.removeCallbacks(mPingWebSocket);
         }
 
         @Override
         public void onText(String text) {
-            Toast.makeText(getActivity(), text, Toast.LENGTH_SHORT).show();
+            if(!"ok".equals(text)) {
+                say(text);
+            }
+            else {
+                final long now = SystemClock.elapsedRealtime();
+                final String msg = String.format("ping round trip: %dms", (now - mPingTime));
+                Log.v(TAG, msg);
+            }
         }
 
         @Override
         public void onJsonObject(JSONObject jo) {
-            Log.v(TAG, jo.toString());
             LocationRelayManager.handleIncomingWsObject(jo, mWsMessageCallback);
         }
 
         @Override
         public void onError(Throwable err) {
             showError(err);
+        }
+    };
+
+    private final BluetoothService.Listener mBtListener = new BluetoothService.Listener() {
+        @Override
+        public void onConnected() {
+            mBtConnected = true;
+            setButtonStates();
+        }
+
+        @Override
+        public void onConnectionFailed() {
+            mBtConnected = false;
+            showError(new Exception(getString(R.string.toast_bt_connect_failed)));
+            setButtonStates();
+        }
+
+        @Override
+        public void onConnectionLost() {
+            mBtConnected = false;
+            showError(new Exception(getString(R.string.toast_bt_connection_lost)));
+            setButtonStates();
+        }
+
+        @Override
+        public void onStopped() {
+            mBtConnected = false;
+            setButtonStates();
         }
     };
 
@@ -257,10 +342,14 @@ public class TrackerFragment extends Fragment {
     private View mBottomBar;
 
     // connection panel
-    private View mConnectionPanel;
+    private View mSocketPanel;
     private EditText mIpEditText;
     private EditText mPortEditText;
     private Button mConnectButton;
+
+    // bluetooth panel
+    private View mBluetoothPanel;
+    private Button mBtConnectButton;
 
     private String mSelectedGroup;
     private String mSelectedUser;
@@ -269,16 +358,20 @@ public class TrackerFragment extends Fragment {
     private boolean mPanToMarkers = false;
     private RelayType mRelayType = RelayType.None;
 
-    private SocketClient mClient;
+    private SocketClient mSocketClient;
     private Thread mClientThread;
     private Animation mInTop, mInBottom;
     private Animation mOutTop, mOutBottom;
 
     private MapState mSavedMapState;
     private WebSocketClient mWebSocketClient;
+    private boolean mBtConnected;
+    private BluetoothService mBtService;
+    private Runnable mPendingOperation = null;
 
     private final HashMap<String, Marker> mMapMarkers = new HashMap<String, Marker>();
     private final HashMap<String, StaleLocation> mStaleLocations = new HashMap<String, StaleLocation>();
+    private final ArrayList<String> mGroupNames = new ArrayList<String>();
 
     private final Handler mHandler = new Handler(new Handler.Callback() {
         @Override
@@ -294,6 +387,10 @@ public class TrackerFragment extends Fragment {
                         StaleLocation loc = mStaleLocations.get(user);
 
                         if((now - loc.getTime()) > STALE_USER_MAX_AGE) {
+                            if(isFollowedUser(user)) {
+                                warnFollowedUserHasDied(user);
+                            }
+
                             deleteUser(user);
                             toRemove.add(user);
                         }
@@ -318,6 +415,18 @@ public class TrackerFragment extends Fragment {
         }
     });
 
+    private final Runnable mPingWebSocket = new Runnable() {
+        @Override
+        public void run() {
+            Log.v(TAG, "ping web socket");
+            mWebSocketClient.send("{\"type\": \"ping\"}");
+            mPingTime = SystemClock.elapsedRealtime();
+            mHandler.postDelayed(this, WS_PING_INTERVAL);
+        }
+    };
+
+    private long mPingTime;
+
     public TrackerFragment() {
         super();
     }
@@ -330,8 +439,8 @@ public class TrackerFragment extends Fragment {
         final Context context = getContext();
         mWebSocketClient = new WebSocketClient(context, mWebSocketListener);
 
-        if(Network.isConnected(context)) {
-            mWebSocketClient.connect();
+        if(!BluetoothService.isBluetoothAvailable()) {
+            say(R.string.toast_bt_not_available);
         }
     }
 
@@ -364,6 +473,8 @@ public class TrackerFragment extends Fragment {
 
         view.findViewById(R.id.btn_refresh).setOnClickListener(mClickListener);
         view.findViewById(R.id.layout_top).setOnClickListener(mClickListener);
+        view.findViewById(R.id.layout_top).setOnClickListener(mClickListener);
+        view.findViewById(R.id.bottombar).setOnClickListener(mClickListener);
 
         ((CheckBox)view.findViewById(R.id.chk_pan_map)).setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -374,6 +485,7 @@ public class TrackerFragment extends Fragment {
         });
 
         initConnectionPanel(view);
+        initBluetoothPanel(view);
         initGroupSpinner(view);
         initMap(view);
         initRelayTypes(view);
@@ -388,17 +500,33 @@ public class TrackerFragment extends Fragment {
             mSavedMapState.center = state.getParcelable(STATE_MAP_CENTER);
             mSavedMapState.zoom = state.getFloat(STATE_MAP_ZOOM);
 
-            fillAdapterWith(state.getStringArrayList(STATE_GROUP_LIST));
+            fillAdapterWith(mGroupNames);
 
             if(!TextUtils.isEmpty(mSelectedUser)) {
                 showFollowingUser(mSelectedUser);
             }
+
+            setButtonStates();
         }
         else {
             retrieveGroups();
         }
 
+        setRelayType(mRelayType);
         setButtonStates();
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+
+        if(BluetoothService.isBluetoothEnabled()) {
+            setupService();
+        }
+        else {
+            Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+        }
     }
 
     @Override
@@ -408,6 +536,8 @@ public class TrackerFragment extends Fragment {
         DKBridgePrefs prefs = DKBridgePrefs.get();
         prefs.setLastMapCenter(mMap.getCameraPosition().target);
         prefs.setLastMapZoom(mMap.getCameraPosition().zoom);
+
+        mHandler.removeCallbacks(mPingWebSocket);
     }
 
     @Override
@@ -418,8 +548,45 @@ public class TrackerFragment extends Fragment {
             mWebSocketClient.disconnect();
         }
 
-        if(mClient != null) {
-            disconnectClient();
+        if(mSocketClient != null) {
+            disconnectSocket();
+        }
+
+        mHandler.removeCallbacks(mPingWebSocket);
+        mHandler.removeMessages(MSG_STALE_TARGET);
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        switch(requestCode) {
+            case REQUEST_ENABLE_BT: {
+                switch(resultCode) {
+                    case Activity.RESULT_OK: {
+                        setupService();
+                        break;
+                    }
+
+                    case Activity.RESULT_CANCELED: {
+                        say(R.string.toast_bt_not_enabled);
+                        break;
+                    }
+                }
+
+                break;
+            }
+
+            case REQUEST_CONNECT_DEVICE: {
+                switch(resultCode) {
+                    case Activity.RESULT_OK: {
+                        connectBtDevice(data, false);
+                        break;
+                    }
+                }
+            }
+
+            default: {
+                super.onActivityResult(requestCode, resultCode, data);
+            }
         }
     }
 
@@ -427,12 +594,9 @@ public class TrackerFragment extends Fragment {
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
 
-        final ArrayList<String> groups = getGroupsFromSpinner();
-
         outState.putBoolean(STATE_RUNNING, mRunning);
         outState.putString(STATE_SELECTED_GROUP, mSelectedGroup);
         outState.putString(STATE_SELECTED_USER, mSelectedUser);
-        outState.putStringArrayList(STATE_GROUP_LIST, groups);
         outState.putParcelable(STATE_MAP_CENTER, mMap.getCameraPosition().target);
         outState.putFloat(STATE_MAP_ZOOM, mMap.getCameraPosition().zoom);
     }
@@ -459,21 +623,56 @@ public class TrackerFragment extends Fragment {
             unsubscribe();
             mRunning = false;
             setButtonStates();
+
+            mHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    mWebSocketClient.disconnect();
+                }
+            }, 500);
         }
         else {
-            if(mSelectedGroup != null) {
-                subscribeToGroup(mSelectedGroup);
-                mRunning = true;
-                setButtonStates();
+            if(mWebSocketClient != null && mWebSocketClient.isConnected()) {
+                if(mGroupNames.isEmpty()) {
+                    showError(new Exception(getString(R.string.toast_no_groups_refresh)));
+                }
+                else if(mSelectedGroup != null) {
+                    subscribeToGroup(mSelectedGroup);
+                    mRunning = true;
+                    setButtonStates();
+                }
+            }
+            else {
+                Log.w(TAG, "Autobahn disconnected, reconnect");
+
+                mPendingOperation = new Runnable() {
+                    public void run() {
+                        onStartStopClick(null);
+
+                        mPendingOperation = null;
+                    }
+                };
+
+                mWebSocketClient = new WebSocketClient(DKBridgeApp.get(), mWebSocketListener);
+                mWebSocketClient.connect();
             }
         }
     }
 
-    void onConnectClick(View v) {
-        if(mClient != null) {
-            disconnectClient();
+    void onConnectSocketClick(View v) {
+        if(mSocketClient != null) {
+            disconnectSocket();
         } else {
-            connectClient();
+            connectSocket();
+        }
+    }
+
+    void onConnectBtClick(View v) {
+        if(mBtConnected) {
+            disconnectBt();
+        }
+        else {
+            connectBt();
         }
     }
 
@@ -494,6 +693,7 @@ public class TrackerFragment extends Fragment {
         if(group != null && !group.equals(mSelectedGroup)) {
             clearMapMarkers();
             mSelectedGroup = group;
+            setButtonStates();
         }
     }
 
@@ -538,7 +738,6 @@ public class TrackerFragment extends Fragment {
 
         switch(mRelayType) {
             case Broadcast: {
-                Log.v(TAG, "Broadcast " + location);
                 if(intent != null) {
                     DKBridgeApp.get().sendBroadcast(intent);
                 }
@@ -546,10 +745,20 @@ public class TrackerFragment extends Fragment {
             }
 
             case Socket: {
-                if(mClient != null) {
+                if(mSocketClient != null) {
                     JSONObject jo = LocationRelay.populateDroneLocationEvent(new JSONObject(), intent);
                     if(jo != null) {
-                        mClient.send(jo.toString());
+                        mSocketClient.send(jo.toString());
+                    }
+                }
+                break;
+            }
+
+            case Bluetooth: {
+                if(mBtConnected) {
+                    JSONObject jo = LocationRelay.populateDroneLocationEvent(new JSONObject(), intent);
+                    if(jo != null) {
+                        mBtService.write(jo.toString().getBytes());
                     }
                 }
                 break;
@@ -582,12 +791,15 @@ public class TrackerFragment extends Fragment {
             @Override
             public void onResponse(Call<List<String>> call, Response<List<String>> response) {
                 List<String> list = response.body();
+                mGroupNames.clear();
+                mGroupNames.addAll(list);
                 fillAdapterWith(list);
             }
 
             @Override
             public void onFailure(Call<List<String>> call, Throwable err) {
                 showError(err);
+                mGroupNames.clear();
                 Log.e(TAG, err.getMessage(), err);
             }
         });
@@ -595,6 +807,8 @@ public class TrackerFragment extends Fragment {
 
     void fillAdapterWith(List<String> list) {
         final Context context = DKBridgeApp.get();
+
+        boolean hasItems = (!list.isEmpty());
 
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(context, android.R.layout.simple_spinner_item, android.R.id.text1, list) {
             @Override
@@ -614,6 +828,8 @@ public class TrackerFragment extends Fragment {
 
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         mGroupsSpinner.setAdapter(adapter);
+
+        mGroupsSpinner.setVisibility((hasItems)?View.VISIBLE: View.GONE);
     }
 
     void setButtonStates() {
@@ -623,8 +839,14 @@ public class TrackerFragment extends Fragment {
             if(view != null) {
                 mGroupsSpinner.setEnabled(!mRunning);
                 getView().findViewById(R.id.btn_refresh).setEnabled(!mRunning);
-                mStartButton.setText(mRunning? R.string.btn_stop: R.string.btn_start);
-                mConnectButton.setText((mClient != null)? R.string.btn_disconnect: R.string.btn_connect);
+                mStartButton.setText(mRunning ? R.string.btn_stop : R.string.btn_start);
+                mStartButton.setEnabled(mSelectedGroup != null);
+
+                mConnectButton.setText((mSocketClient != null)? R.string.btn_disconnect: R.string.btn_connect);
+                mConnectButton.setEnabled(Network.isOnWifi(DKBridgeApp.get()));
+
+                mBtConnectButton.setText(mBtConnected? R.string.btn_disconnect: R.string.btn_connect);
+                mBtConnectButton.setEnabled(BluetoothService.isBluetoothEnabled());
             }
         }
     }
@@ -643,11 +865,10 @@ public class TrackerFragment extends Fragment {
     }
 
     void initMap(View view) {
-        SupportMapFragment fragment = (SupportMapFragment)getChildFragmentManager().findFragmentById(R.id.map);
+        SupportMapFragment fragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
         fragment.getMapAsync(new OnMapReadyCallback() {
             @Override
             public void onMapReady(GoogleMap googleMap) {
-                Log.v(TAG, "onMapReady()");
                 mMap = googleMap;
                 mMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
                 mMap.getUiSettings().setMapToolbarEnabled(false);
@@ -710,6 +931,11 @@ public class TrackerFragment extends Fragment {
                     checkId = R.id.rdo_socket;
                     break;
                 }
+
+                case DKBridgePrefs.RELAY_TYPE_BT: {
+                    checkId = R.id.rdo_bt;
+                    break;
+                }
             }
 
             if(checkId != 0) {
@@ -720,8 +946,15 @@ public class TrackerFragment extends Fragment {
         ((CheckBox)view.findViewById(R.id.chk_pan_map)).setChecked(prefs.getPanToFollow());
     }
 
+    void initBluetoothPanel(View view) {
+        mBluetoothPanel = view.findViewById(R.id.layout_bluetooth_panel);
+        mBtConnectButton = (Button)view.findViewById(R.id.btn_bt_connect);
+        mBluetoothPanel.setVisibility(View.GONE);
+        mBtConnectButton.setOnClickListener(mClickListener);
+    }
+
     void initConnectionPanel(View view) {
-        mConnectionPanel = view.findViewById(R.id.layout_connection_panel);
+        mSocketPanel = view.findViewById(R.id.layout_connection_panel);
         mIpEditText = (EditText)view.findViewById(R.id.edit_ip_addr);
         mPortEditText = (EditText)view.findViewById(R.id.edit_port);
 
@@ -731,11 +964,11 @@ public class TrackerFragment extends Fragment {
         mConnectButton = (Button)view.findViewById(R.id.btn_connect);
         mConnectButton.setOnClickListener(mClickListener);
 
-        mConnectionPanel.setVisibility(View.GONE);
+        mSocketPanel.setVisibility(View.GONE);
     }
 
     void initGroupSpinner(View view) {
-        mGroupsSpinner = (Spinner)view.findViewById(R.id.spin_groups);
+        mGroupsSpinner = (Spinner) view.findViewById(R.id.spin_groups);
         mGroupsSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -749,23 +982,10 @@ public class TrackerFragment extends Fragment {
     }
 
     void initRelayTypes(View v) {
-        RadioGroup group = (RadioGroup)v.findViewById(R.id.grp_send_type);
-        group.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(RadioGroup group, int checkedId) {
-                switch (checkedId) {
-                    case R.id.rdo_broadcast: {
-                        setRelayType(RelayType.Broadcast);
-                        break;
-                    }
+        v.findViewById(R.id.rdo_bt).setEnabled(BluetoothService.isBluetoothAvailable());
 
-                    case R.id.rdo_socket: {
-                        setRelayType(RelayType.Socket);
-                        break;
-                    }
-                }
-            }
-        });
+        RadioGroup group = (RadioGroup)v.findViewById(R.id.grp_send_type);
+        group.setOnCheckedChangeListener(mConnectionCheckListener);
     }
 
     private float nextMarkerHue() {
@@ -806,6 +1026,7 @@ public class TrackerFragment extends Fragment {
                             .snippet(snippet)
                             .icon(BitmapDescriptorFactory.defaultMarker(nextMarkerHue()))
                             .alpha(0.7f)
+                            .anchor(0.5f, 0.5f)
                             .draggable(false)
             );
 
@@ -859,52 +1080,70 @@ public class TrackerFragment extends Fragment {
     }
 
     void setRelayType(RelayType type) {
-        if(mRelayType != type) {
-            String prefType = null;
+        String prefType = null;
 
-            switch(type) {
-                case Broadcast: {
-                    mConnectionPanel.setVisibility(View.GONE);
-                    prefType = DKBridgePrefs.RELAY_TYPE_BCAST;
-                    break;
-                }
-
-                case Socket: {
-                    mConnectionPanel.setVisibility(View.VISIBLE);
-                    prefType = DKBridgePrefs.RELAY_TYPE_SOCKET;
-                    break;
-                }
-
-                default: {
-                    mConnectionPanel.setVisibility(View.GONE);
-                    Log.v(TAG, "relay type set to " + type.toString());
-                    break;
-                }
+        switch(type) {
+            case Broadcast: {
+                mSocketPanel.setVisibility(View.GONE);
+                mBluetoothPanel.setVisibility(View.GONE);
+                prefType = DKBridgePrefs.RELAY_TYPE_BCAST;
+                break;
             }
 
-            if(prefType != null) {
-                DKBridgePrefs.get().setTrackerRelayType(prefType);
+            case Bluetooth: {
+                mSocketPanel.setVisibility(View.GONE);
+                mBluetoothPanel.setVisibility(View.VISIBLE);
+                prefType = DKBridgePrefs.RELAY_TYPE_BT;
+                break;
             }
+
+            case Socket: {
+                mBluetoothPanel.setVisibility(View.GONE);
+                mSocketPanel.setVisibility(View.VISIBLE);
+                prefType = DKBridgePrefs.RELAY_TYPE_SOCKET;
+                break;
+            }
+
+            default: {
+                mSocketPanel.setVisibility(View.GONE);
+                mBluetoothPanel.setVisibility(View.GONE);
+                Log.v(TAG, "relay type set to " + type.toString());
+                break;
+            }
+        }
+
+        if(prefType != null) {
+            DKBridgePrefs.get().setTrackerRelayType(prefType);
         }
 
         mRelayType = type;
     }
 
-    void connectClient() {
+    void connectBt() {
+        startActivityForResult(new Intent(getActivity(), DeviceListActivity.class), REQUEST_CONNECT_DEVICE);
+    }
+
+    void disconnectBt() {
+        mBtService.stop();
+        mBtConnected = false;
+        setButtonStates();
+    }
+
+    void connectSocket() {
         String ip = mIpEditText.getText().toString();
         int port = Integer.valueOf(mPortEditText.getText().toString());
 
-        mClient = new SocketClient(DKBridgeApp.get().getHandler(), mClientListener, ip, port);
-        mClientThread = new Thread(mClient);
+        mSocketClient = new SocketClient(DKBridgeApp.get().getHandler(), mClientListener, ip, port);
+        mClientThread = new Thread(mSocketClient);
         mClientThread.start();
 
         DKBridgePrefs.get().setLastServerIp(ip);
         DKBridgePrefs.get().setLastServerPort(String.valueOf(port));
     }
 
-    void disconnectClient() {
-        if(mClient != null && mClient.isConnected()) {
-            mClient.cancel();
+    void disconnectSocket() {
+        if(mSocketClient != null && mSocketClient.isConnected()) {
+            mSocketClient.cancel();
         }
 
         if(mClientThread != null) {
@@ -915,7 +1154,7 @@ public class TrackerFragment extends Fragment {
             }
         }
 
-        mClient = null;
+        mSocketClient = null;
         mClientThread = null;
     }
 
@@ -925,6 +1164,42 @@ public class TrackerFragment extends Fragment {
         final Activity activity = getActivity();
         if(activity != null && !activity.isDestroyed()) {
             Toast.makeText(activity, error.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    void say(String str) {
+        Activity activity = getActivity();
+        if(activity != null && !activity.isDestroyed()) {
+            Toast.makeText(getActivity(), str, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    void say(int resId) {
+        say(getString(resId));
+    }
+
+    void setupService() {
+        if(mBtService == null) {
+            mBtService = new BluetoothService(DKBridgeApp.get(), mBtListener);
+        }
+    }
+
+    /**
+     * Establish connection with other divice
+     *
+     * @param data   An {@link Intent} with {@link DeviceListActivity#EXTRA_DEVICE_ADDRESS} extra.
+     * @param secure Socket Security type - Secure (true) , Insecure (false)
+     */
+    void connectBtDevice(Intent data, boolean secure) {
+        final BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        if(adapter != null && adapter.isEnabled()) {
+            // Get the device MAC address
+            String address = data.getExtras()
+                    .getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
+            // Get the BluetoothDevice object
+            BluetoothDevice device = adapter.getRemoteDevice(address);
+            // Attempt to connect to the device
+            mBtService.connect(device, secure);
         }
     }
 }

@@ -8,7 +8,6 @@
     <!--<string name="retro_base_url">http://192.168.1.133:3000</string>-->
     <!--<string name="ws_base_url">ws://192.168.1.133:3000</string>-->
 
-
     <integer name="slide_anim_time">300</integer>
     <integer name="fade_anim_time">300</integer>
 </resources>

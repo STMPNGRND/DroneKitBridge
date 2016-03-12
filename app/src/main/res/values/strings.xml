@@ -10,6 +10,8 @@
     <string name="nav_mode">Mode</string>
     <string name="nav_server">Relay Server</string>
     <string name="nav_client">Relay Client</string>
+    <string name="nav_bt_server">Bluetooth Relay Server</string>
+    <string name="nav_bt_client">Bluetooth Relay Client</string>
     <string name="nav_remote_track">Remote Target</string>
     <string name="nav_tracker">Track Targets</string>
 
@@ -28,6 +30,24 @@
     <string name="btn_start">Start</string>
     <string name="btn_stop">Stop</string>
 
+    <string name="toast_bt_connected">Connected</string>
+    <string name="toast_bt_not_available">Bluetooth is not available on this device.</string>
+    <string name="toast_bt_not_enabled">Bluetooth is not enabled.</string>
+    <string name="title_connected_to">Connected to %s</string>
+    <string name="title_connecting">Connecting...</string>
+    <string name="title_not_connected">Not connected</string>
+    <string name="chk_discoverable">Visible to other devices</string>
+
+    <!-- DeviceListActivity -->
+    <string name="title_activity_device_list">Devices</string>
+    <string name="title_paired_devices">Paired devices</string>
+    <string name="title_other_devices">Other devices</string>
+    <string name="btn_scan">Scan</string>
+    <string name="none_paired">None paired</string>
+    <string name="none_found">No devices found</string>
+    <string name="status_scanning">Scanning</string>
+    <string name="select_device">Select device</string>
+
     <!-- ServerFragment -->
     <string name="title_fragment_server">Relay Server</string>
     <string name="summary_fragment_server">Use this to receive messages from a <b>client</b> device running this application on the same network.
@@ -45,6 +65,12 @@
     <string name="toast_not_on_wifi">You are not on a wifi connection. No one will be able to connect to you.</string>
     <string name="no_wifi_connection">(Not on wifi)</string>
 
+    <!-- BluetoothServerFragment -->
+    <string name="title_fragment_bt_server">Bluetooth Relay Server</string>
+    <string name="summary_fragment_bt_server">Use this to receive messages from a connected Bluetooth client receiving
+        location data. Select <b>Relay Locations</b> to broadcast the received locations to Tower.
+    </string>
+
     <!-- ClientFragment -->
     <string name="title_fragment_client">Relay Client</string>
     <string name="summary_fragment_client">Use this to send messages to a <b>server</b> device running this application on the same network.
@@ -53,6 +79,16 @@
     <string name="lbl_location_options">Locations:</string>
     <string name="rdo_drone_location">Send drone locations from Tower</string>
     <string name="rdo_my_location">Send my locations</string>
+
+    <!-- BluetoothClientFragment -->
+    <string name="title_fragment_bt_client">Relay Bluetooth Client</string>
+    <string name="summary_fragment_bt_client">Use this to send messages to a connected Bluetooth device running this application.
+    Click <b>Send drone locations from Tower</b> to receive them from Tower and send them to the other device.</string>
+    <string name="btn_find_devices">Find devices</string>
+    <string name="status_connecting">Connecting...</string>
+    <string name="status_connected">Connected</string>
+    <string name="toast_bt_connect_failed">Connection failed.</string>
+    <string name="toast_bt_connection_lost">Connection lost.</string>
 
     <!-- RemoteTrackFragment -->
     <string name="title_fragment_remote_track">Remote Target</string>
@@ -73,13 +109,17 @@
     <string name="follow_user_fmt">Following %s</string>
     <string name="say_warn_followed_user_died">Warning: Follow Target has stopped reporting locations.</string>
     <string name="btn_stop_following_user">Stop</string>
-    <string name="lbl_send_type">Relay type:</string>
-    <string name="rdo_broadcast">Broadcast to Tower</string>
-    <string name="rdo_socket">Relay Server</string>
+    <string name="lbl_relay_type">Relay type:</string>
+    <string name="rdo_broadcast">Broadcast</string>
+    <string name="rdo_socket">Socket</string>
+    <string name="rdo_bt">Bluetooth</string>
     <string name="hint_ip_addr">IP Address</string>
     <string name="hint_port">Port</string>
     <string name="port_default">8888</string>
     <string name="tip_tracker_socket_connect">Connect to this app on a different device</string>
+    <string name="group_no_groups">(no groups)</string>
+    <string name="toast_ws_disconnected">Disconnected</string>
+    <string name="toast_no_groups_refresh">No groups. Refresh to see current groups.</string>
 
     <!-- LocationAwareness -->
     <string name="toast_location_rationale">Locations are needed for sending to the drone.</string>

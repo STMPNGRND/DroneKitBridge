@@ -36,11 +36,13 @@ public class WebSocketClient {
         public void onOpen() {
             super.onOpen();
             mListener.onConnected();
+            mConnected = true;
         }
 
         @Override
         public void onClose(int code, String reason) {
             super.onClose(code, reason);
+            mConnected = false;
             mListener.onDisconnected(code, reason);
         }
 
@@ -82,7 +84,6 @@ public class WebSocketClient {
     public void connect() {
         try {
             mConnection.connect(mContext.getString(R.string.ws_base_url), mSocketHandler);
-            mConnected = true;
         }
         catch(WebSocketException ex) {
             mListener.onError(ex);

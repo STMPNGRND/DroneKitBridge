@@ -41,6 +41,7 @@ public class LocationRelayManager {
     public interface WsMessageCallback {
         void onUserDeleted(String user);
         void onUserLocation(String user, UserLocation location);
+        void onFollowedUserLocation(String user, UserLocation location);
         void onError(Throwable error);
     }
 
@@ -78,6 +79,12 @@ public class LocationRelayManager {
         try {
             String type = jo.getString("type");
             switch(type) {
+                case "user_location": {
+                    Pair<String, UserLocation> pair = toUserLocation(jo);
+                    cb.onFollowedUserLocation(pair.first, pair.second);
+                    break;
+                }
+
                 case "location": {
                     Pair<String, UserLocation> pair = toUserLocation(jo);
                     cb.onUserLocation(pair.first, pair.second);

@@ -1,7 +1,6 @@
 package com.fognl.dronekitbridge;
 
 import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.Fragment;
@@ -13,6 +12,8 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import com.fognl.dronekitbridge.fragments.BluetoothClientFragment;
+import com.fognl.dronekitbridge.fragments.BluetoothServerFragment;
 import com.fognl.dronekitbridge.fragments.ClientFragment;
 import com.fognl.dronekitbridge.fragments.RemoteTargetFragment;
 import com.fognl.dronekitbridge.fragments.ServerFragment;
@@ -22,10 +23,7 @@ import com.fognl.dronekitbridge.location.LocationAwareness;
 import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity
-        implements
-        NavigationView.OnNavigationItemSelectedListener,
-        ServerFragment.OnFragmentInteractionListener,
-        ClientFragment.OnFragmentInteractionListener {
+        implements NavigationView.OnNavigationItemSelectedListener {
 
     static final String TAG = MainActivity.class.getSimpleName();
 
@@ -35,6 +33,8 @@ public class MainActivity extends AppCompatActivity
     private ClientFragment mClientFragment;
     private RemoteTargetFragment mRemoteTargetFragment;
     private TrackerFragment mTrackerFragment;
+    private BluetoothServerFragment mBtServerFragment;
+    private BluetoothClientFragment mBtClientFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,6 +53,8 @@ public class MainActivity extends AppCompatActivity
         mFragMap.put(DKBridgePrefs.FRAG_CLIENT, mClientFragment = new ClientFragment());
         mFragMap.put(DKBridgePrefs.FRAG_REMOTE, mRemoteTargetFragment = new RemoteTargetFragment());
         mFragMap.put(DKBridgePrefs.FRAG_TRACKER, mTrackerFragment = new TrackerFragment());
+        mFragMap.put(DKBridgePrefs.FRAG_BT_SERVER, mBtServerFragment = new BluetoothServerFragment());
+        mFragMap.put(DKBridgePrefs.FRAG_BT_CLIENT, mBtClientFragment = new BluetoothClientFragment());
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
@@ -111,6 +113,16 @@ public class MainActivity extends AppCompatActivity
                 break;
             }
 
+            case R.id.nav_bt_server: {
+                setMainFragment(mBtServerFragment);
+                break;
+            }
+
+            case R.id.nav_bt_client: {
+                setMainFragment(mBtClientFragment);
+                break;
+            }
+
             case R.id.nav_remote_track: {
                 setMainFragment(mRemoteTargetFragment);
                 break;
@@ -151,15 +163,12 @@ public class MainActivity extends AppCompatActivity
             if(frag == mClientFragment) tag = DKBridgePrefs.FRAG_CLIENT;
             if(frag == mRemoteTargetFragment) tag = DKBridgePrefs.FRAG_REMOTE;
             if(frag == mTrackerFragment) tag = DKBridgePrefs.FRAG_TRACKER;
+            if(frag == mBtServerFragment) tag = DKBridgePrefs.FRAG_BT_SERVER;
+            if(frag == mBtClientFragment) tag = DKBridgePrefs.FRAG_BT_CLIENT;
 
             if(tag != null) {
                 DKBridgePrefs.get().setLastFragment(tag);
             }
         }
-    }
-
-    @Override
-    public void onFragmentInteraction(Uri uri) {
-
     }
 }

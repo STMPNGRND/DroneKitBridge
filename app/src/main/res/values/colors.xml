@@ -13,4 +13,6 @@
     <color name="text_combo">#FF676767</color>
     <color name="text_combo_top">#FF343434</color>
     <color name="LightShade_background">#AAFFFFFF</color>
+    <color name="ListSeparator_background">#FFBDBDBD</color>
+    <color name="ListSeparator_textColor">#FF343434</color>
 </resources>

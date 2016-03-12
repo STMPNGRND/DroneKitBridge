@@ -62,6 +62,12 @@
         <item name="android:textStyle">bold</item>
     </style>
 
+    <style name="Text.ListSeparator">
+        <item name="android:background">@color/ListSeparator_background</item>
+        <item name="android:textColor">@color/ListSeparator_textColor</item>
+        <item name="android:padding">@dimen/padding_large</item>
+    </style>
+
     <style name="Button.NoBorder">
         <item name="android:textColor">@color/colorPrimary</item>
         <item name="android:background">@null</item>

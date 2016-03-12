@@ -31,4 +31,7 @@ public interface LocationRelayService {
 
     @GET("/follow/user/{groupId}/{userId}")
     Call<String> followUserInGroup(@Path("groupId") String groupId, @Path("userId") String userId);
+
+    @GET("/client/myip")
+    Call<ResponseBody> retrieveMyIp();
 }

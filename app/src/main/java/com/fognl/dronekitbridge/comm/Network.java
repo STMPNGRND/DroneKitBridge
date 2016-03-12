@@ -15,6 +15,12 @@ public class Network {
         return (net != null && net.isConnected());
     }
 
+    public static boolean isConnected(Context context) {
+        ConnectivityManager conMan = (ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo net = conMan.getActiveNetworkInfo();
+        return (net != null && net.isConnected());
+    }
+
     public static WifiManager getWifiManager(Context c) {
         return (WifiManager)c.getSystemService(Context.WIFI_SERVICE);
     }

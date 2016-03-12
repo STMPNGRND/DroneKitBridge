@@ -2,6 +2,8 @@ package com.fognl.dronekitbridge.locationrelay;
 
 import android.content.Context;
 import android.location.Location;
+import android.util.Log;
+import android.util.Pair;
 
 import com.fognl.dronekitbridge.R;
 import com.fognl.dronekitbridge.web.LocationRelayService;
@@ -10,8 +12,10 @@ import com.fognl.dronekitbridge.web.UserLocation;
 import com.fognl.dronekitbridge.web.UserLocationPostBody;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +38,62 @@ public class LocationRelayManager {
         void error(Throwable error);
     }
 
+    public interface WsMessageCallback {
+        void onUserDeleted(String user);
+        void onUserLocation(String user, UserLocation location);
+        void onError(Throwable error);
+    }
+
     private static LocationRelayService sService;
+
+    static String getJsonString(String type, String group, String user) {
+        try {
+            JSONObject jo = new JSONObject();
+            jo.put("type", type);
+            jo.put("groupId", group);
+            if(user != null) {
+                jo.put("userId", user);
+            }
+
+            return jo.toString();
+        }
+        catch(JSONException ex) {
+            return "";
+        }
+    }
+
+    public static String getSubscribeToString(String group, String user) {
+        return getJsonString("subscribe", group, user);
+    }
+
+    public static String getSubscribeToString(String group) {
+        return getSubscribeToString(group, null);
+    }
+
+    public static String getUnsubscribeString(String group, String user) {
+        return getJsonString("unsubscribe", group, user);
+    }
+
+    public static void handleIncomingWsObject(JSONObject jo, WsMessageCallback cb) {
+        try {
+            String type = jo.getString("type");
+            switch(type) {
+                case "location": {
+                    Pair<String, UserLocation> pair = toUserLocation(jo);
+                    cb.onUserLocation(pair.first, pair.second);
+                    break;
+                }
+
+                case "delete": {
+                    cb.onUserDeleted(jo.getString("userId"));
+                    break;
+                }
+            }
+        }
+        catch(JSONException ex) {
+            cb.onError(ex);
+        }
+    }
 
     public static void sendLocation(
             Context context, String groupId, String userId, Location location, final Callback<ServerResponse> callback) {
@@ -75,7 +134,7 @@ public class LocationRelayManager {
                     callback.onResponse(call, response);
                 }
                 else {
-                    callback.onFailure(call, new Exception("Server is down or dyno is stopped"));
+                    callback.onFailure(call, new Exception("Server is down"));
                 }
             }
 
@@ -86,12 +145,24 @@ public class LocationRelayManager {
         });
     }
 
+    static Pair<String, UserLocation> toUserLocation(JSONObject jo) {
+        try {
+            String user = jo.getString("userId");
+            JSONObject joLoc = jo.getJSONObject("location");
+            return new Pair<String, UserLocation>(user, UserLocation.populate(new UserLocation(), joLoc));
+        }
+        catch(JSONException ex) {
+            Log.e(TAG, ex.getMessage(), ex);
+        }
+
+        return null;
+    }
+
     public static void retrieveGroupLocations(Context context, String groupId,
                                               final RelayCallback<Map<String, UserLocation>> callback) {
 
         final LocationRelayService service = getLocationRelayService(context);
 
-        // TODO: Figure out how to get Retrofit to just map the response to an object.
         final Call<ResponseBody> call = service.followGroup(groupId);
         call.enqueue(new Callback<ResponseBody>() {
             @Override
@@ -121,7 +192,7 @@ public class LocationRelayManager {
                         callback.complete(map);
                     }
                     else {
-                        callback.error(new Exception("Server is down or dyno is stopped"));
+                        callback.error(new Exception("Server is down"));
                     }
                 }
                 catch(Throwable ex) {
@@ -150,7 +221,7 @@ public class LocationRelayManager {
                     callback.onResponse(call, response);
                 }
                 else {
-                    callback.onFailure(call, new Exception("Server is down or dyno is stopped"));
+                    callback.onFailure(call, new Exception("Server is down"));
                 }
             }
 
@@ -166,6 +237,34 @@ public class LocationRelayManager {
 
         final Call<ServerResponse> call = service.deleteGroup(groupId);
         call.enqueue(callback);
+    }
+
+    public static void getPublicIpAddress(Context context, final RelayCallback<String> callback) {
+        LocationRelayService service = getLocationRelayService(context);
+        final Call<ResponseBody> call = service.retrieveMyIp();
+
+        call.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                ResponseBody body = response.body();
+                if(body != null) {
+                    try {
+                        callback.complete(body.string());
+                    }
+                    catch(IOException ex) {
+                        callback.error(ex);
+                    }
+                }
+                else {
+                    callback.error(new Exception("Server is down"));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+
+            }
+        });
     }
 
     public static LocationRelayService getLocationRelayService(Context context) {

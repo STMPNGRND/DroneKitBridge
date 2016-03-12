@@ -100,12 +100,21 @@ public class LocationAwareness {
 
         if(isProviderEnabled(provider)) {
             if(isMarshmallow()) {
-                if(ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    if(ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.ACCESS_FINE_LOCATION)) {
-                        Toast.makeText(activity, R.string.toast_location_rationale, Toast.LENGTH_LONG).show();
+                switch(ActivityCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION)) {
+                    case PackageManager.PERMISSION_GRANTED: {
+                        doStartLocationUpdates();
+                        break;
                     }
 
-                    ActivityCompat.requestPermissions(activity, new String[] { Manifest.permission.ACCESS_FINE_LOCATION }, PERMISSION_REQUEST_LOCATION);
+                    case PackageManager.PERMISSION_DENIED:
+                    default: {
+                        if(ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.ACCESS_FINE_LOCATION)) {
+                            Toast.makeText(activity, R.string.toast_location_rationale, Toast.LENGTH_LONG).show();
+                        }
+
+                        ActivityCompat.requestPermissions(activity, new String[] { Manifest.permission.ACCESS_FINE_LOCATION }, PERMISSION_REQUEST_LOCATION);
+                        break;
+                    }
                 }
             }
             else {

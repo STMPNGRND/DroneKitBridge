@@ -26,6 +26,7 @@ import android.widget.Toast;
 
 import com.fognl.dronekitbridge.DKBridgeApp;
 import com.fognl.dronekitbridge.R;
+import com.fognl.dronekitbridge.comm.Network;
 import com.fognl.dronekitbridge.comm.SocketServer;
 import com.fognl.dronekitbridge.locationrelay.LocationRelay;
 
@@ -194,8 +195,6 @@ public class ServerFragment extends Fragment {
 
         cb.setChecked(mLogIncomingData);
 
-
-
         ((CheckBox)view.findViewById(R.id.chk_relay_locations)).setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -203,11 +202,27 @@ public class ServerFragment extends Fragment {
             }
         });
 
-        try {
-            mIpAddrText.setText(SocketServer.getLocalIpAddress());
-        } catch(Throwable ex) {
-            Log.e(TAG, ex.getMessage(), ex);
+        if(Network.isOnWifi(DKBridgeApp.get())) {
+            try {
+                mIpAddrText.setText(SocketServer.getLocalIpAddress());
+            } catch(Throwable ex) {
+                Log.e(TAG, ex.getMessage(), ex);
+            }
         }
+        else {
+            mIpAddrText.setText(R.string.no_wifi_connection);
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        if(!Network.isOnWifi(DKBridgeApp.get())) {
+            showError(new Exception(getString(R.string.toast_not_on_wifi)));
+        }
+
+        mButton.setEnabled(Network.isOnWifi(DKBridgeApp.get()));
     }
 
     @Override

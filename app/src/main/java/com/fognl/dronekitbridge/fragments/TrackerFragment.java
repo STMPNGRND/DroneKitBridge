@@ -3,10 +3,9 @@ package com.fognl.dronekitbridge.fragments;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.location.Location;
-import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Message;
 import android.os.SystemClock;
 import android.support.v4.app.Fragment;
 import android.text.Editable;
@@ -34,7 +33,9 @@ import android.widget.Toast;
 import com.fognl.dronekitbridge.DKBridgeApp;
 import com.fognl.dronekitbridge.DKBridgePrefs;
 import com.fognl.dronekitbridge.R;
+import com.fognl.dronekitbridge.comm.Network;
 import com.fognl.dronekitbridge.comm.SocketClient;
+import com.fognl.dronekitbridge.comm.WebSocketClient;
 import com.fognl.dronekitbridge.locationrelay.LocationRelay;
 import com.fognl.dronekitbridge.locationrelay.LocationRelayManager;
 import com.fognl.dronekitbridge.speech.Speech;
@@ -54,10 +55,7 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -75,6 +73,10 @@ public class TrackerFragment extends Fragment {
     ,   STATE_MAP_ZOOM = "map_zoom"
     ;
 
+    private static final int MSG_STALE_TARGET = 1001;
+    private static final long STALE_USER_DELETE_DELAY = 5000;
+    private static final long STALE_USER_MAX_AGE = 30000;
+
     enum RelayType {
         None, Broadcast, Socket
     };
@@ -86,34 +88,17 @@ public class TrackerFragment extends Fragment {
 
     static class StaleLocation {
         UserLocation location;
-        int staleCount;
-        private boolean stale = false;
+        private final long time;
 
         StaleLocation(UserLocation loc) {
             location = loc;
+            time = SystemClock.elapsedRealtime();
         }
 
-        void checkAndRemember(UserLocation loc) {
-            if(location.equals(loc)) {
-                ++staleCount;
-            }
-            else {
-                --staleCount;
-            }
-
-            location = loc;
-        }
-
-        boolean isStale() {
-            return (staleCount >= 10);
-        }
-
-        int getStaleCount() { return staleCount; }
+        long getTime() { return time; }
     }
 
-    private static final int MAP_PADDING = 200;
-    private static final long DEF_PING_INTERVAL = 1000;
-    private static final long SLOW_PING_INTERVAL = 5000;
+    private static final int MAP_PADDING = 300;
 
     private static final float[] MARKER_HUES = new float[] {
             BitmapDescriptorFactory.HUE_RED,
@@ -133,7 +118,7 @@ public class TrackerFragment extends Fragment {
         public void onClick(View v) {
             switch(v.getId()) {
                 case R.id.btn_start: {
-                    onStartClick(v);
+                    onStartStopClick(v);
                     break;
                 }
 
@@ -164,6 +149,10 @@ public class TrackerFragment extends Fragment {
         @Override
         public boolean onMarkerClick(Marker marker) {
             Log.v(TAG, "marker.title=" + marker.getTitle());
+
+            if(mSelectedUser != null) {
+                stopFollowingUser();
+            }
 
             String user = marker.getTitle();
             followUser(user);
@@ -205,14 +194,57 @@ public class TrackerFragment extends Fragment {
         }
     };
 
-    private final Handler mHandler = new android.os.Handler();
-
-    private final Runnable mPingGroup = new Runnable() {
+    private final LocationRelayManager.WsMessageCallback mWsMessageCallback = new LocationRelayManager.WsMessageCallback() {
         @Override
-        public void run() {
-            // Ping the current group's locations and update the map markers.
-            Log.v(TAG, "mPingGroup " + mSelectedGroup + " time=" + SystemClock.elapsedRealtime());
-            doPingGroup(mSelectedGroup);
+        public void onUserDeleted(String user) {
+            Marker marker = mMapMarkers.get(user);
+            if(marker != null) {
+                marker.remove();
+            }
+
+            mMapMarkers.remove(user);
+        }
+
+        @Override
+        public void onUserLocation(String user, UserLocation location) {
+            setMapMarkerFrom(user, location);
+
+            if(mPanToMarkers) {
+                zoomToSpanMarkers();
+            }
+        }
+
+        @Override
+        public void onError(Throwable error) {
+            showError(error);
+        }
+    };
+
+    private final WebSocketClient.Listener mWebSocketListener = new WebSocketClient.Listener() {
+        @Override
+        public void onConnected() {
+            Log.v(TAG, "websocket client connected");
+        }
+
+        @Override
+        public void onDisconnected(int code, String reason) {
+            Log.v(TAG, "websocket client disconnected");
+        }
+
+        @Override
+        public void onText(String text) {
+            Toast.makeText(getActivity(), text, Toast.LENGTH_SHORT).show();
+        }
+
+        @Override
+        public void onJsonObject(JSONObject jo) {
+            Log.v(TAG, jo.toString());
+            LocationRelayManager.handleIncomingWsObject(jo, mWsMessageCallback);
+        }
+
+        @Override
+        public void onError(Throwable err) {
+            showError(err);
         }
     };
 
@@ -239,14 +271,52 @@ public class TrackerFragment extends Fragment {
 
     private SocketClient mClient;
     private Thread mClientThread;
-    private long mPingInterval = DEF_PING_INTERVAL;
     private Animation mInTop, mInBottom;
     private Animation mOutTop, mOutBottom;
 
     private MapState mSavedMapState;
+    private WebSocketClient mWebSocketClient;
 
-    private final HashMap<String, Marker> mMarkers = new HashMap<String, Marker>();
+    private final HashMap<String, Marker> mMapMarkers = new HashMap<String, Marker>();
     private final HashMap<String, StaleLocation> mStaleLocations = new HashMap<String, StaleLocation>();
+
+    private final Handler mHandler = new Handler(new Handler.Callback() {
+        @Override
+        public boolean handleMessage(Message msg) {
+            switch(msg.what) {
+                case MSG_STALE_TARGET: {
+                    Log.v(TAG, "MSG_STALE_TARGET");
+                    final long now = SystemClock.elapsedRealtime();
+
+                    final ArrayList<String> toRemove = new ArrayList<String>();
+
+                    for(String user: mStaleLocations.keySet()) {
+                        StaleLocation loc = mStaleLocations.get(user);
+
+                        if((now - loc.getTime()) > STALE_USER_MAX_AGE) {
+                            deleteUser(user);
+                            toRemove.add(user);
+                        }
+                    }
+
+                    for(String r: toRemove) {
+                        mStaleLocations.remove(r);
+                    }
+
+                    if(!mStaleLocations.isEmpty()) {
+                        mHandler.removeMessages(msg.what);
+                        mHandler.sendEmptyMessageDelayed(msg.what, STALE_USER_DELETE_DELAY);
+                    }
+
+                    return true;
+                }
+
+                default: {
+                    return false;
+                }
+            }
+        }
+    });
 
     public TrackerFragment() {
         super();
@@ -256,6 +326,13 @@ public class TrackerFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
+
+        final Context context = getContext();
+        mWebSocketClient = new WebSocketClient(context, mWebSocketListener);
+
+        if(Network.isConnected(context)) {
+            mWebSocketClient.connect();
+        }
     }
 
     @Override
@@ -313,8 +390,8 @@ public class TrackerFragment extends Fragment {
 
             fillAdapterWith(state.getStringArrayList(STATE_GROUP_LIST));
 
-            if(mSelectedGroup != null && mRunning) {
-                startPinging(mSelectedGroup);
+            if(!TextUtils.isEmpty(mSelectedUser)) {
+                showFollowingUser(mSelectedUser);
             }
         }
         else {
@@ -325,10 +402,21 @@ public class TrackerFragment extends Fragment {
     }
 
     @Override
-    public void onDestroyView() {
-        super.onDestroyView();
+    public void onStop() {
+        super.onStop();
 
-        stopPinging();
+        DKBridgePrefs prefs = DKBridgePrefs.get();
+        prefs.setLastMapCenter(mMap.getCameraPosition().target);
+        prefs.setLastMapZoom(mMap.getCameraPosition().zoom);
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+        if(mWebSocketClient.isConnected()) {
+            mWebSocketClient.disconnect();
+        }
 
         if(mClient != null) {
             disconnectClient();
@@ -366,13 +454,17 @@ public class TrackerFragment extends Fragment {
         retrieveGroups();
     }
 
-    void onStartClick(View v) {
+    void onStartStopClick(View v) {
         if(mRunning) {
-            stopPinging();
+            unsubscribe();
+            mRunning = false;
+            setButtonStates();
         }
         else {
             if(mSelectedGroup != null) {
-                startPinging(mSelectedGroup);
+                subscribeToGroup(mSelectedGroup);
+                mRunning = true;
+                setButtonStates();
             }
         }
     }
@@ -409,16 +501,23 @@ public class TrackerFragment extends Fragment {
         Log.v(TAG, "followUser(): user=" + user);
         mSelectedUser = user;
 
+        mWebSocketClient.send(LocationRelayManager.getSubscribeToString(mSelectedGroup, mSelectedUser));
+        showFollowingUser(user);
+    }
+
+    void showFollowingUser(String user) {
         mStatusText.setText(getString(R.string.follow_user_fmt, user));
         mStopFollowingUserButton.setVisibility(View.VISIBLE);
     }
 
     void stopFollowingUser() {
+        mWebSocketClient.send(LocationRelayManager.getUnsubscribeString(mSelectedGroup, mSelectedUser));
+
         mStatusText.setText("");
         mSelectedUser = null;
         mStopFollowingUserButton.setVisibility(View.GONE);
 
-        for(Marker m: mMarkers.values()) {
+        for(Marker m: mMapMarkers.values()) {
             m.hideInfoWindow();
         }
     }
@@ -460,23 +559,22 @@ public class TrackerFragment extends Fragment {
 
     void clearMapMarkers() {
         mMap.clear();
-        mMarkers.clear();
+        mMapMarkers.clear();
     }
 
-    void startPinging(String group) {
-        mHandler.removeCallbacks(mPingGroup);
-        mPingInterval = DEF_PING_INTERVAL;
-        mRunning = true;
-        mHandler.post(mPingGroup);
-        setButtonStates();
+    void subscribeToGroup(String group) {
+        mWebSocketClient.send(LocationRelayManager.getSubscribeToString(group));
     }
 
-    void stopPinging() {
-        mHandler.removeCallbacks(mPingGroup);
-        mRunning = false;
+    void subscribeToGroupAndUser(String group, String user) {
+        mWebSocketClient.send(LocationRelayManager.getSubscribeToString(group, user));
+    }
+
+    void unsubscribe() {
         stopFollowingUser();
+        mWebSocketClient.send(LocationRelayManager.getUnsubscribeString(mSelectedGroup, null));
+        mMapMarkers.clear();
         clearMapMarkers();
-        setButtonStates();
     }
 
     void retrieveGroups() {
@@ -560,15 +658,21 @@ public class TrackerFragment extends Fragment {
                     mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(mSavedMapState.center, mSavedMapState.zoom));
 
                     mSavedMapState = null;
-                }
+                } else {
+                    DKBridgePrefs prefs = DKBridgePrefs.get();
+                    LatLng center = prefs.getLastMapCenter();
+                    if (center != null) {
+                        float zoom = prefs.getLastMapZoom();
 
-                setMyLocation();
+                        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(center, zoom));
+                    }
+                }
             }
         });
     }
 
     void reloadMapMarkers() {
-        final HashMap<String, Marker> map = new HashMap<String, Marker>(mMarkers);
+        final HashMap<String, Marker> map = new HashMap<String, Marker>(mMapMarkers);
 
         for(String key: map.keySet()) {
             Marker m = map.get(key);
@@ -583,7 +687,7 @@ public class TrackerFragment extends Fragment {
                             .draggable(false)
             );
 
-            mMarkers.put(key, marker);
+            mMapMarkers.put(key, marker);
         }
     }
 
@@ -664,43 +768,6 @@ public class TrackerFragment extends Fragment {
         });
     }
 
-    void setMyLocation() {
-        LocationManager man = (LocationManager) DKBridgeApp.get().getSystemService(Context.LOCATION_SERVICE);
-        try {
-            Location last = man.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            if(last != null) {
-                LatLng ll = new LatLng(last.getLatitude(), last.getLongitude());
-                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(ll, 20));
-            }
-        }
-        catch(SecurityException ex) {
-            Log.e(TAG, ex.getMessage(), ex);
-        }
-        catch(Throwable ex) {
-            Log.e(TAG, ex.getMessage(), ex);
-        }
-    }
-
-    void doPingGroup(String group) {
-        LocationRelayManager.retrieveGroupLocations(DKBridgeApp.get(), group, new LocationRelayManager.RelayCallback<Map<String, UserLocation>>() {
-            @Override
-            public void complete(Map<String, UserLocation> result) {
-                setMapMarkersFrom(result);
-
-                if (mRunning) {
-                    mHandler.postDelayed(mPingGroup, mPingInterval);
-                }
-            }
-
-            @Override
-            public void error(Throwable error) {
-                Log.e(TAG, error.getMessage(), error);
-                showError(error);
-                stopPinging();
-            }
-        });
-    }
-
     private float nextMarkerHue() {
         float out = MARKER_HUES[mMarkerHueIndex];
 
@@ -711,64 +778,28 @@ public class TrackerFragment extends Fragment {
         return out;
     }
 
-    void setMapMarkersFrom(Map<String, UserLocation> map) {
+    void setMapMarkerFrom(String user, UserLocation location) {
+        Marker marker = mMapMarkers.get(user);
+        final LatLng position = new LatLng(location.getLat(), location.getLng());
+        final String snippet = String.format(
+                "heading: %.2f speed: %.2f m/s",
+                location.getHeading(), location.getSpeed());
 
-        // Users that were here last time
-        final Set<String> usersWhoLeft = new HashSet<String>(mMarkers.keySet());
+        if(marker != null) {
+            marker.setPosition(position);
+            marker.setSnippet(snippet);
 
-        // Users that haven't updated in a long time
-        final Set<String> deadUsers = new HashSet<String>();
-
-        final long now = SystemClock.elapsedRealtime();
-        long totalDiff = 0;
-
-        for(String user : map.keySet()) {
-            final UserLocation location = map.get(user);
-
-            StaleLocation stale = mStaleLocations.get(user);
-
-            if(stale != null) {
-                long diff = location.getTime() - stale.location.getTime();
-                totalDiff += diff;
-
-                stale.checkAndRemember(location);
-
-                if(stale.isStale()) {
-                    Log.v(TAG, String.format("%s hasn't reported in %d cycles. Must be dead", user, stale.getStaleCount()));
-                    deadUsers.add(user);
-                    mStaleLocations.remove(user);
-
-                    if(isFollowedUser(user)) {
-                        warnFollowedUserHasDied(user);
-                    }
-
-                    continue;
+            if(isFollowedUser(user)) {
+                if(marker.isInfoWindowShown()) {
+                    // force an update (should be a better way to do this)
+                    marker.hideInfoWindow();
                 }
-            }
-            else {
-                mStaleLocations.put(user, stale = new StaleLocation(location));
-            }
 
-            final LatLng position = new LatLng(location.getLat(), location.getLng());
-            final String snippet = String.format(
-                    "heading: %.2f speed: %.2f m/s",
-                    location.getHeading(), location.getSpeed());
-            Marker marker = mMarkers.get(user);
-
-            if(marker != null) {
-                marker.setPosition(position);
-                marker.setSnippet(snippet);
-
-                if(isFollowedUser(user)) {
-                    if(marker.isInfoWindowShown()) {
-                        // force an update (should be a better way to do this)
-                        marker.hideInfoWindow();
-                        marker.showInfoWindow();
-                    }
-                }
+                marker.showInfoWindow();
             }
-            else {
-                marker = mMap.addMarker(
+        }
+        else {
+            marker = mMap.addMarker(
                     new MarkerOptions()
                             .position(position)
                             .title(user)
@@ -776,88 +807,54 @@ public class TrackerFragment extends Fragment {
                             .icon(BitmapDescriptorFactory.defaultMarker(nextMarkerHue()))
                             .alpha(0.7f)
                             .draggable(false)
-                );
+            );
 
-                mMarkers.put(user, marker);
-            }
-
-            usersWhoLeft.remove(user);
-
-            if(isFollowedUser(user)) {
-                sendFollowedUserLocation(location);
-            }
+            mMapMarkers.put(user, marker);
         }
 
-        if(!map.isEmpty()) {
-            mPingInterval = DEF_PING_INTERVAL;
-            Log.v(TAG, "mPingInterval=" + mPingInterval);
-        }
-        else {
-            mPingInterval = SLOW_PING_INTERVAL;
-            Log.v(TAG, "mPingInterval=" + mPingInterval);
-        }
+        mStaleLocations.put(user, new StaleLocation(location));
 
-        // Remove markers for users that aren't reporting anymore
-        for(String user: usersWhoLeft) {
-            Marker marker = mMarkers.get(user);
-            if(marker != null) {
-                marker.remove();
-                mMarkers.remove(user);
-            }
-
-            if(isFollowedUser(user)) {
-                warnFollowedUserHasDied(user);
-            }
-        }
-
-        if(mPanToMarkers) {
-            zoomToSpanMarkers();
-        }
-
-        if(!deadUsers.isEmpty()) {
-            deleteUsers(deadUsers);
-        }
+        mHandler.removeMessages(MSG_STALE_TARGET);
+        mHandler.sendEmptyMessageDelayed(MSG_STALE_TARGET, STALE_USER_DELETE_DELAY);
     }
 
-    void deleteUsers(Iterable<String> users) {
-        if(mSelectedGroup != null) {
-            Log.v(TAG, "deleteUsers(): users=" + users);
+    void deleteUser(String user) {
+        // Takes care of removing the markers, etc
+        // WS message will come back and take care of removing the marker, etc.
 
-            for(String user: users) {
-                mMarkers.remove(user);
-
-                LocationRelayManager.deleteUser(DKBridgeApp.get(), mSelectedGroup, user, new Callback<ServerResponse>() {
-                    @Override
-                    public void onResponse(Call<ServerResponse> call, Response<ServerResponse> response) {
-                        ServerResponse body = response.body();
-                        if(body != null) {
-                            Log.v(TAG, body.getMessage());
-                        }
-                        else {
-                            Log.w(TAG, "Body is null. This is a problem on the server.");
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(Call<ServerResponse> call, Throwable err) {
-                        Log.e(TAG, err.getMessage(), err);
-                    }
-                });
-            }
+        if (isFollowedUser(user)) {
+            stopFollowingUser();
         }
+
+        LocationRelayManager.deleteUser(DKBridgeApp.get(), mSelectedGroup, user, new Callback<ServerResponse>() {
+            @Override
+            public void onResponse(Call<ServerResponse> call, Response<ServerResponse> response) {
+                ServerResponse body = response.body();
+                if (body != null) {
+                    Log.v(TAG, body.getMessage());
+                } else {
+                    Log.w(TAG, "Body is null. This is a problem on the server.");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ServerResponse> call, Throwable err) {
+                Log.e(TAG, err.getMessage(), err);
+            }
+        });
     }
 
     void zoomToSpanMarkers() {
-        if(mMarkers.size() > 0) {
+        if(mMapMarkers.size() > 0) {
             LatLngBounds.Builder b = new LatLngBounds.Builder();
 
-            for(Marker marker: mMarkers.values()) {
+            for(Marker marker: mMapMarkers.values()) {
                 b.include(marker.getPosition());
             }
 
             LatLngBounds bounds = b.build();
 
-            mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, MAP_PADDING));
+            mMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, MAP_PADDING), 500, null);
         }
     }
 
@@ -923,6 +920,8 @@ public class TrackerFragment extends Fragment {
     }
 
     void showError(Throwable error) {
+        Log.e(TAG, error.getMessage(), error);
+
         final Activity activity = getActivity();
         if(activity != null && !activity.isDestroyed()) {
             Toast.makeText(activity, error.getMessage(), Toast.LENGTH_LONG).show();

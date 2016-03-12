@@ -3,11 +3,15 @@ package com.fognl.dronekitbridge;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
+import android.util.Log;
+
+import com.google.android.gms.maps.model.LatLng;
 
 /**
  * Created by kellys on 2/27/16.
  */
 public class DKBridgePrefs {
+    static final String TAG = DKBridgePrefs.class.getSimpleName();
     private static DKBridgePrefs sInstance;
 
     public static final String PREF_SERVER_IP = "server_ip";
@@ -26,6 +30,9 @@ public class DKBridgePrefs {
     public static final String PREF_TRACKER_RELAY_TYPE = "tracker_relay_type";
         public static final String RELAY_TYPE_BCAST = "bcast";
         public static final String RELAY_TYPE_SOCKET = "socket";
+
+    public static final String PREF_LAST_MAP_ZOOM = "last_map_zoom";
+    public static final String PREF_LAST_MAP_CENTER = "last_map_center";
 
     public static void init(Context context) {
         if(sInstance == null) {
@@ -68,6 +75,31 @@ public class DKBridgePrefs {
 
     public String getTrackerRelayType() { return getPrefs().getString(PREF_TRACKER_RELAY_TYPE, RELAY_TYPE_BCAST); }
     public void setTrackerRelayType(String type) { getPrefs().edit().putString(PREF_TRACKER_RELAY_TYPE, type).commit(); }
+
+    public LatLng getLastMapCenter() {
+        String str = getPrefs().getString(PREF_LAST_MAP_CENTER, null);
+
+        if(str != null) {
+            String[] parts = str.split("/");
+            try {
+                return new LatLng(Double.valueOf(parts[0]), Double.valueOf(parts[1]));
+            }
+            catch(Throwable ex) {
+                Log.e(TAG, ex.getMessage(), ex);
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    public void setLastMapCenter(LatLng center) {
+        String value = String.format("%.4f/%.4f", center.latitude, center.longitude);
+        getPrefs().edit().putString(PREF_LAST_MAP_CENTER, value).commit();
+    }
+
+    public float getLastMapZoom() { return getPrefs().getFloat(PREF_LAST_MAP_ZOOM, 20); }
+    public void setLastMapZoom(float zoom) { getPrefs().edit().putFloat(PREF_LAST_MAP_ZOOM, zoom).commit(); }
 
     public void setLastGroupAndUserId(String groupId, String userId) {
         getPrefs()

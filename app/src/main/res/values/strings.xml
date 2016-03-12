@@ -31,7 +31,9 @@
     <!-- ServerFragment -->
     <string name="title_fragment_server">Relay Server</string>
     <string name="summary_fragment_server">Use this to receive messages from a <b>client</b> device running this application on the same network.
-    You can then echo the location messages to <b>Tower</b> or another app running on the same device to direct a drone to those locations.</string>
+    You can then echo the location messages to <b>Tower</b> or another app running on the same device to direct a drone to those locations.
+    <b><i>NOTE:</i></b> Only works on a wifi connection.
+    </string>
     <string name="toast_server_stopped">Server Stopped</string>
     <string name="toast_client_connected">Client connected</string>
     <string name="toast_client_disconnected">Client disconnected</string>
@@ -40,6 +42,8 @@
     <string name="chk_relay_locations">Relay target locations</string>
     <string name="ip_addr_port">IP Address and port</string>
     <string name="toast_copied">Copied to clipboard</string>
+    <string name="toast_not_on_wifi">You are not on a wifi connection. No one will be able to connect to you.</string>
+    <string name="no_wifi_connection">(Not on wifi)</string>
 
     <!-- ClientFragment -->
     <string name="title_fragment_client">Relay Client</string>
@@ -68,7 +72,7 @@
     <string name="chk_pan_map">Pan to follow targets</string>
     <string name="follow_user_fmt">Following %s</string>
     <string name="say_warn_followed_user_died">Warning: Follow Target has stopped reporting locations.</string>
-    <string name="btn_stop_following_user">Stop following</string>
+    <string name="btn_stop_following_user">Stop</string>
     <string name="lbl_send_type">Relay type:</string>
     <string name="rdo_broadcast">Broadcast to Tower</string>
     <string name="rdo_socket">Relay Server</string>

@@ -10,7 +10,15 @@ etc. and let the drone pilot run the camera and the drone, letting it follow som
 It's implemented as a separate app from Tower to allow flexibility in how locations are received, for reasons you're likely
 to understand if you read this whole document. :-D
 
-## Following remote targets
+## Setup
+
+You need this project, as well as:
+
++ [Modified DroneKit-Android] (https://github.com/kellyschrock/DroneKit-Android/tree/location_relay)
++ [Modified Tower] (https://github.com/kellyschrock/droidplanner/tree/location_relay)
+
+
+## Following Remote Targets
 
 This is useful if you have, for example, a group of people on motorcycles, etc. running around and you want to capture "follow me"
 footage of them while they ride.
@@ -42,14 +50,14 @@ To actually follow the targets with a drone requires a few things:
 Suppose you're following with a 3DR Solo. If you have a tablet with a 4G mobile connection and you're somehow able to connect to
 both the internet *and* to SoloLink_xxxx for your Solo, you can use just one tablet. If you're like me, you don't. So here's how I do it:
 
-**Samsung Tab**
+#### Samsung Tab
 1. Run Tower, on SoloLink_xxxx. Connect it to the Solo.
 2. Run DKB on my Samsung Tab, in **Bluetooth Relay Server** view.
 3. Turn the **Relay target locations** option on.
 4. Hit **Listen**.
 5. Switch back to Tower (Don't hit **back**, switch to Tower instead.)
 
-**Nexus 5X**
+#### Nexus 5X
 1. I have an LTE connection. Check.
 2. Run DKB, and switch to **Track Targets** and select my group.
 3. Select the **Send over Bluetooth** option in the bottom bar, and hit **Connect**.
@@ -71,22 +79,22 @@ This is handy for testing, since I can fly a target around remotely instead of h
 
 I use 2 tablets for this: A Nexus 7 running Tower and DKB, and a Samsung Tab running Tower/DKB and connected to the Solo.
 
-**Samsung Tab**
+#### Samsung Tab
 1. Run Tower, on SoloLink_xxxx. Connect it to the Solo.
 2. Run DKB, in **Bluetooth Relay Server** view.
 3. Turn the **Relay target locations** option on.
 4. Hit **Listen**.
 5. Switch back to Tower (Don't hit **back**, switch to Tower instead.)
 
-**Nexus 7**
+#### Nexus 7
 1. Run Tower and connect to my Iris.
-2. Make sure I have the *Broadcast Drone Location* option turned on in Settings/Others.
+2. Make sure the *Broadcast Drone Location* setting is turned on in Settings/Others.
 3. Switch to DKB and select *Bluetooth Relay Client*.
 4. Select *Send drone locations from Tower*.
 5. Select **Connect**. (Button should change to **Disconnect**. If so, you're connected.)
 6. Switch back to Tower.
 
-**Flight**
+#### Flight
 1. Launch Solo and hover nearby.
 2. Launch the Iris and hover about 50 feet from the Solo.
 3. Make sure you have *both* controllers within easy reach (just to be safe).

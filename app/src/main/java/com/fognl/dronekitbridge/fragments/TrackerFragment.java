@@ -239,6 +239,13 @@ public class TrackerFragment extends Fragment {
             }
 
             mMapMarkers.remove(user);
+
+            if(isFollowedUser(user)) {
+                // If the followed user just disappeared, warn client apps.
+                DKBridgeApp.get().sendBroadcast(
+                        new Intent(LocationRelay.EVT_FOLLOW_TARGET_STOPPED)
+                            .putExtra(LocationRelay.EXTRA_USER, user));
+            }
         }
 
         @Override
@@ -761,6 +768,10 @@ public class TrackerFragment extends Fragment {
                         mBtService.write(jo.toString().getBytes());
                     }
                 }
+                break;
+            }
+
+            default: {
                 break;
             }
         }

@@ -27,10 +27,8 @@ public class LocationRelay {
     public static final String EVT_BASE = "org.droidplanner.android.locationrelay";
     public static final String EVT_DRONE_LOCATION_UPDATED = EVT_BASE + ".DRONE_LOCATION_UPDATED";
     public static final String EVT_TARGET_LOCATION_UPDATED = EVT_BASE + ".TARGET_LOCATION_UPDATED";
-
-    // Internal events
-    public static final String EVT_INTERNAL_TARGET_LOCATION = EVT_BASE + ".INTERNAL_TARGET_LOCATION";
-    public static final String EVT_FOLLOW_STOPPED = EVT_BASE + ".FOLLOW_STOPPED";
+    public static final String EVT_FOLLOW_TARGET_STOPPED = EVT_BASE + ".FOLLOW_TARGET_STOPPED";
+    public static final String EXTRA_USER = "user";
 
     public static final String
         EXTRA_LAT = "lat"

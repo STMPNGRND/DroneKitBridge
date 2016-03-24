@@ -12,11 +12,7 @@
     <string name="nav_client">Relay Client</string>
     <string name="nav_bt_server">Bluetooth Relay Server</string>
     <string name="nav_bt_client">Bluetooth Relay Client</string>
-    <string name="nav_remote_track">Remote Target</string>
     <string name="nav_tracker">Track Targets</string>
-
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
 
     <string name="lbl_ip_addr">IP Address:</string>
     <string name="lbl_port">Port:</string>
@@ -49,9 +45,9 @@
     <string name="select_device">Select device</string>
 
     <!-- ServerFragment -->
-    <string name="title_fragment_server">Relay Server</string>
-    <string name="summary_fragment_server">Use this to receive messages from a <b>client</b> device running this application on the same network.
-    You can then echo the location messages to <b>Tower</b> or another app running on the same device to direct a drone to those locations.
+    <string name="title_fragment_socket_server">Socket Server</string>
+    <string name="summary_fragment_server">Use this to receive messages from a device running this application in <b>Socket Client</b> mode on the same network.
+    You can then relay the location messages from it to <b>Tower</b> or another app running on the same device to direct a drone to those locations.
     <b><i>NOTE:</i></b> Only works on a wifi connection.
     </string>
     <string name="toast_server_stopped">Server Stopped</string>
@@ -66,24 +62,28 @@
     <string name="no_wifi_connection">(Not on wifi)</string>
 
     <!-- BluetoothServerFragment -->
-    <string name="title_fragment_bt_server">Bluetooth Relay Server</string>
-    <string name="summary_fragment_bt_server">Use this to receive messages from a connected Bluetooth client receiving
-        location data. Select <b>Relay Locations</b> to broadcast the received locations to Tower.
+    <string name="title_fragment_bt_server">Bluetooth Server</string>
+    <string name="summary_fragment_bt_server">Use this to receive messages from a connected Bluetooth client in <b>Bluetooth Client</b> mode receiving
+        location data. Select <b>Relay target locations</b> to send the received locations to Tower.
     </string>
 
     <!-- ClientFragment -->
-    <string name="title_fragment_client">Relay Client</string>
-    <string name="summary_fragment_client">Use this to send messages to a <b>server</b> device running this application on the same network.
-    Click <b>Send drone locations from Tower</b> to receive them from Tower and send them to the other device.</string>
-    <string name="toast_client_connect_failed">Connection to server failed.</string>
+    <string name="title_fragment_socket_client">Socket Client</string>
+    <string name="summary_fragment_client">Use this to send messages to another device running this application in <b>Socket Server</b> mode on the same network.
+    Click <b>Send drone locations from Tower</b> to receive locations from Tower and send them to the other device.
+    Click <b>Send my locations</b> to receive this device\'s locations and send them to the other device.
+    </string>
+    <string name="toast_client_connect_failed">Connection to socket failed.</string>
     <string name="lbl_location_options">Locations:</string>
     <string name="rdo_drone_location">Send drone locations from Tower</string>
     <string name="rdo_my_location">Send my locations</string>
 
     <!-- BluetoothClientFragment -->
-    <string name="title_fragment_bt_client">Relay Bluetooth Client</string>
-    <string name="summary_fragment_bt_client">Use this to send messages to a connected Bluetooth device running this application.
-    Click <b>Send drone locations from Tower</b> to receive them from Tower and send them to the other device.</string>
+    <string name="title_fragment_bt_client">Bluetooth Client</string>
+    <string name="summary_fragment_bt_client">Use this to send messages to a connected Bluetooth device running this application
+        in <b>Bluetooth Server</b> mode. Click <b>Send drone locations from Tower</b> to receive them from Tower and send them to the other device.
+        Click <b>Send my locations</b> to send this device\'s locations to the other device.
+    </string>
     <string name="btn_find_devices">Find devices</string>
     <string name="status_connecting">Connecting...</string>
     <string name="status_connected">Connected</string>
@@ -91,7 +91,7 @@
     <string name="toast_bt_connection_lost">Connection lost.</string>
 
     <!-- RemoteTrackFragment -->
-    <string name="title_fragment_remote_track">Remote Target</string>
+    <string name="title_fragment_remote_target">Follow Me</string>
     <string name="summary_fragment_remote_track">Use this to let the drone track your location as you move around.\n\n
     <b>Note:</b> You need to have a good internet connection.</string>
     <string name="lbl_groupId">Group ID:</string>
@@ -103,7 +103,7 @@
 
     <!-- TrackerFragment -->
     <string name="title_fragment_tracker">Track Targets</string>
-    <string name="summary_fragment_tracker">Use this to track multiple remote targets.</string>
+    <string name="summary_fragment_tracker">Use this to track multiple targets in <b>Follow Me</b> mode.</string>
     <string name="lbl_group">Group:</string>
     <string name="chk_pan_map">Pan to follow targets</string>
     <string name="follow_user_fmt">Following %s</string>

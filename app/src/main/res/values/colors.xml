@@ -15,4 +15,5 @@
     <color name="LightShade_background">#AAFFFFFF</color>
     <color name="ListSeparator_background">#FFBDBDBD</color>
     <color name="ListSeparator_textColor">#FF343434</color>
+    <color name="LogArea_background">#aaefefef</color>
 </resources>

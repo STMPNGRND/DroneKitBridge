@@ -5,30 +5,32 @@
                 style="@style/MainFragment"
                 tools:context="com.fognl.dronekitbridge.fragments.ClientFragment"
     >
-
-    <TextView
-        android:id="@+id/text_title"
+    <LinearLayout
+        android:id="@+id/layout_top"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:text="@string/title_fragment_bt_client"
-        style="@style/Text.Title"
-        />
+        android:orientation="vertical"
+        >
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/title_fragment_bt_client"
+            style="@style/Text.Title"
+            />
 
-    <TextView
-        android:id="@+id/text_summary"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/text_title"
-        android:text="@string/summary_fragment_bt_client"
-        style="@style/Text.Summary"
-        />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/summary_fragment_bt_client"
+            style="@style/Text.Summary"
+            />
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/layout_fields"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/text_summary"
+        android:layout_below="@id/layout_top"
         android:orientation="vertical"
         >
         <LinearLayout
@@ -40,33 +42,27 @@
                 android:id="@+id/group_locations"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
+                android:orientation="horizontal"
                 >
                 <RadioButton
                     android:id="@+id/rdo_drone_location"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dip"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:text="@string/rdo_drone_location"
                     />
 
                 <RadioButton
                     android:id="@+id/rdo_my_location"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dip"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:text="@string/rdo_my_location"
                     />
             </RadioGroup>
 
         </LinearLayout>
     </LinearLayout>
-
-    <CheckBox
-        android:id="@+id/chk_log"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/layout_fields"
-        android:text="@string/chk_log_output"
-        />
 
     <LinearLayout
         android:id="@+id/layout_buttons"
@@ -79,11 +75,19 @@
         >
         <LinearLayout
             android:layout_width="0dip"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:layout_below="@id/layout_buttons"
             android:orientation="vertical"
+            style="@style/LogArea"
             >
+            <CheckBox
+                android:id="@+id/chk_log"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/chk_log_output"
+                />
+
             <ScrollView
                 android:id="@+id/scrollview"
                 android:layout_width="match_parent"
